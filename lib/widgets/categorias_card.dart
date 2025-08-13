@@ -20,18 +20,20 @@ class CategoriaCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 80,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
+        constraints: const BoxConstraints(minWidth: 80),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: Colors.yellow[700],
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 30),
-            const SizedBox(height: 4),
-            Text(nome, style: const TextStyle(fontSize: 12)),
+            Icon(icon, size: 15),
+            const SizedBox(height: 3),
+            Text(nome, style: const TextStyle(fontSize: 10)),
+            const SizedBox(width: 2),
             const Icon(Icons.arrow_forward_ios, size: 12),
           ],
         ),

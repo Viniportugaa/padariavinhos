@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:padariavinhos/pages/menuinicial_page.dart';
-import 'package:padariavinhos/pages/login_page.dart';
-import 'package:padariavinhos/router.dart';
 import 'package:go_router/go_router.dart';
+import 'package:padariavinhos/services/auth_notifier.dart';
+import 'package:padariavinhos/main.dart';
+import 'package:provider/provider.dart';
+import 'package:padariavinhos/widgets/auth_panel.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,8 +12,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> {
   double _opacity = 0.0;
 
   @override
@@ -37,24 +36,13 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _finishSplashAfterDelay() async {
     await Future.delayed(const Duration(seconds: 3));
     print('SplashScreen: delay finalizado'); // PRINT
-    if (mounted) {
-      context.go('/menu');
-    }
+    if (!mounted) return;
+
+    Provider.of<AuthNotifier>(context, listen: false).markSplashFinished();
   }
 
   @override
   Widget build(BuildContext context) {
-    // if (authNotifier.usuarioDesconectado) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       SnackBar(
-    //         content: Text('Sua conta foi removida. Faça login novamente.'),
-    //         backgroundColor: Colors.redAccent,
-    //       ),
-    //     );
-    //     authNotifier.usuarioDesconectado = false;
-    //   });
-    // }
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -70,18 +58,25 @@ class _SplashScreenState extends State<SplashScreen>
             ],
           ),
         ),
-        child: Center(
-          child: AnimatedOpacity(
-            opacity: _opacity,
-            duration: const Duration(seconds: 2),
-            curve: Curves.easeInOut,
-            child: Image.asset(
-              'assets/LogoPadariaVinhosBranco.png',
-              width: 200,
-              height: 200,
-              fit: BoxFit.contain,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Center(
+              child: AnimatedOpacity(
+                opacity: _opacity,
+                duration: const Duration(seconds: 2),
+                curve: Curves.easeInOut,
+                child: Image.asset(
+                  'assets/LogoPadariaVinhosBranco.png',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 40),
+            const AuthStatusPanel(), // ✅ Painel de status inserido aqui
+          ],
         ),
       ),
     );

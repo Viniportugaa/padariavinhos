@@ -3,41 +3,53 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:padariavinhos/services/auth_service.dart';
+import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/router.dart';
 import 'firebase_options.dart';
 import 'package:padariavinhos/services/carrinhos_provider.dart';
-
+import 'package:firebase_app_check/firebase_app_check.dart';
 // Notifiers
 import 'notifiers/products_notifier.dart';
 
 
 
-Future<void> main() async {
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  print("🟡 Rodando em: ${kIsWeb ? "Web" : Platform.operatingSystem}");
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("✅ Firebase inicializado com sucesso");
+  } catch (e, stack) {
+    print("❌ Erro ao inicializar Firebase: $e");
+    print("Stacktrace: $stack");
+  }
+    if (!kIsWeb) {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+      );
+      print("✅ App Check ativado");
+    }
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  //final authStream = FirebaseAuth.instance.authStateChanges();
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ProductsNotifier()),
-        ChangeNotifierProvider(create: (context)=> AuthService()),
-        ChangeNotifierProvider(create: (_) => CarrinhoProvider()),
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ProductsNotifier()),
+          ChangeNotifierProvider(create: (_) => CarrinhoProvider()),
+          ChangeNotifierProvider(create: (_) => AuthNotifier()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  }
 
-      ],
-      child: MyApp()
-  )
-  );
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -45,6 +57,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     print("App started");
+    final router = createRouter(context.read<AuthNotifier>());
     return MaterialApp.router(
       routerConfig: router,
       debugShowCheckedModeBanner: false,

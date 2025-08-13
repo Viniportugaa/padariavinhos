@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../models/produto.dart';
 
 class ProductService {
@@ -9,58 +10,72 @@ class ProductService {
 
 
   /// Faz upload da imagem e retorna a URL
-  Future<String> uploadImage(File imageFile, String fileName) async {
-    // 1) inicia o upload e aguarda conclusão
-    final snapshot = await _storage
-        .ref('produtos/$fileName')
+  Future<String> uploadImage(File imageFile) async {
+    try{
+      final String fileName = const Uuid().v4();
+      final snapshot = await _storage
+        .ref('produtos/$fileName.jpg')
         .putFile(imageFile);
 
-    // 2) depois que o upload termina, pega a URL
-    return await snapshot.ref.getDownloadURL();
-
+      return await snapshot.ref.getDownloadURL();
+    } catch (e){
+      throw Exception("Erro ao fazer upload da imagem: $e");
+    }
   }
 
-  /// Salva um documento na coleção "produtos"
-  Future<void> saveProduct({
-    required String nome,
-    required String descricao,
-    required double preco,
-    required List<String> imageUrl,
-    required bool disponivel,
-    required String category,
-  }) {
-    final doc = _firestore.collection('produtos').doc();
-    return doc.set({
-      'nome': nome,
-      'descricao': descricao,
-      'preco': preco,
-      'imageUrl': imageUrl,
-      'disponivel': disponivel,
-      'category': category,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  Future<List<String>> uploadMultipleImages(List<File> imageFiles) async {
+    List<String> urls = [];
+    for (File file in imageFiles) {
+      final url = await uploadImage(file);
+      urls.add(url);
+    }
+    return urls;
   }
+
+  Future<void> saveProduct(Produto produto) async {
+    try {
+      await _firestore.collection('produtos').doc(produto.id).set(produto.toMap());
+    } catch (e) {
+      throw Exception("Erro ao salvar produto: $e");
+    }
+  }
+
+  Stream<List<Produto>> streamProdutosDisponiveis() {
+    return FirebaseFirestore.instance
+        .collection('produtos')
+        .where('disponivel', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) =>
+        snapshot.docs.map((doc) => Produto.fromMap(doc.data(), doc.id)).toList());
+  }
+
 
   Future<void> alterarDisponibilidade({
     required String produtoId,
     required bool disponivel,
-  }) {
-    return _firestore
-        .collection('produtos')
-        .doc(produtoId)
-        .update({'disponivel': disponivel});
+  }) async {
+    try {
+      await _firestore
+          .collection('produtos')
+          .doc(produtoId)
+          .update({'disponivel': disponivel});
+    } catch (e) {
+      throw Exception("Erro ao alterar disponibilidade: $e");
+    }
   }
 
   Future<List<Produto>> fetchProdutos() async {
-    final snapshot = await _firestore
-        .collection('produtos')
-        .where('disponivel', isEqualTo: true)  // filtra só os disponíveis
-        .get();
+    try {
+      final snapshot = await _firestore
+          .collection('produtos')
+          .where('disponivel', isEqualTo: true)
+          .get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return Produto.fromMap(data, doc.id);
-    }).toList();
+      return snapshot.docs.map((doc) {
+        return Produto.fromMap(doc.data(), doc.id);
+      }).toList();
+    } catch (e) {
+      throw Exception("Erro ao buscar produtos: $e");
+    }
   }
-
 }

@@ -6,7 +6,7 @@ import 'package:padariavinhos/widgets/categorias_card.dart';
 
 class ListaCategorias extends StatelessWidget {
   final List<String> categorias;
-  final Function(String) onSelecionarCategoria;
+  final Function(String?) onSelecionarCategoria;
 
   const ListaCategorias({
     super.key,
@@ -19,13 +19,13 @@ class ListaCategorias extends StatelessWidget {
     final selecionada = context.watch<ProductsNotifier>().categoriaSelecionada;
 
     return SizedBox(
-      height: 100,
+      height: 30,
       child: ScrollConfiguration(
         behavior: const ScrollBehavior().copyWith(
           scrollbars: false,
           dragDevices: {
             PointerDeviceKind.touch,
-            PointerDeviceKind.mouse, // ✅ Suporte a web
+            PointerDeviceKind.mouse,
           },
         ),
         child: ListView.builder(
@@ -39,7 +39,7 @@ class ListaCategorias extends StatelessWidget {
                 nome: 'Todos',
                 icon: Icons.apps,
                 selecionado: selecionada == null,
-                onTap: () => onSelecionarCategoria(''),
+                onTap: () => onSelecionarCategoria(null),
               );
             }
 
@@ -64,7 +64,7 @@ class ListaCategorias extends StatelessWidget {
       case 'lanches': return Icons.fastfood;
       case 'refrigerante': return Icons.local_cafe;
       case 'doce': return Icons.icecream;
-      case 'salgados': return Icons.ramen_dining;
+      case 'salgados': return Icons.add_circle_outline;
       case 'festividade': return Icons.celebration;
       case 'pratos': return Icons.restaurant;
       default: return Icons.local_pizza;

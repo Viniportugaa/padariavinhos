@@ -3,13 +3,13 @@
 import 'package:flutter/material.dart';
 import '../models/produto.dart';
 import '../services/product_service.dart';
-
+import 'dart:async';
 
 
 class ProductsNotifier extends ChangeNotifier {
   final _service = ProductService();
   List<Produto> produtos = [];
-  bool loading = false;
+  bool loading = true;
   bool _loaded = false;
 
   String? categoriaSelecionada;
@@ -20,52 +20,58 @@ class ProductsNotifier extends ChangeNotifier {
     'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
   ];
 
+  StreamSubscription? _subscription;
 
-
-  Future<void> load() async {
-    if (_loaded) return;
-    print('Iniciando carregamento de produtos...');
+  void startListening() {
     loading = true;
     notifyListeners();
 
-    produtos = await _service.fetchProdutos();
-    print('Produtos carregados: ${produtos.length}');
-
-    loading = false;
-    _loaded = true;
-    notifyListeners();
+    _subscription = _service
+        .streamProdutosDisponiveis()
+        .listen((produtosNovos) {
+      produtos = produtosNovos;
+      loading = false;
+      notifyListeners();
+    }, onError: (error) {
+      // trate o erro como preferir
+      loading = false;
+      notifyListeners();
+    });
   }
-  List<Produto> get produtosFiltrados {
-    if (categoriaSelecionada == null) return produtos;
-    return produtos.where((p) => p.category == categoriaSelecionada).toList();
-  }
 
-  // Categorias únicas dinâmicas + fixas
-  List<String> get categoriasUnicas {
-    final setCategorias = <String>{};
-    for (final produto in produtos) {
-      if (produto.category.isNotEmpty) {
-        setCategorias.add(produto.category);
-      }
+    @override
+    void dispose() {
+      _subscription?.cancel();
+      super.dispose();
     }
 
-    return [
-      ...categoriasFixas,
-      ...setCategorias.where((c) => !categoriasFixas.contains(c)),
-    ];
+    List<Produto> get produtosFiltrados {
+      if (categoriaSelecionada == null) return produtos;
+      final filtro = categoriaSelecionada!.trim().toLowerCase();
+      return produtos.where((p) => p.category.trim().toLowerCase() == filtro).toList();
+    }
+
+    List<String> get categoriasUnicas {
+      final setCategorias = <String>{};
+      for (final produto in produtos) {
+        if (produto.category.isNotEmpty) {
+          setCategorias.add(produto.category);
+        }
+      }
+
+      return [
+        ...categoriasFixas,
+        ...setCategorias.where((c) => !categoriasFixas.contains(c)),
+      ];
+    }
+
+    void filtrarPorCategoria(String? categoria) {
+      categoriaSelecionada = categoria;
+      notifyListeners();
+    }
+
+    void limparFiltroCategoria() {
+      categoriaSelecionada = null;
+      notifyListeners();
+    }
   }
-
-  // Filtro por categoria
-  void filtrarPorCategoria(String categoria) {
-    categoriaSelecionada = categoria;
-    notifyListeners();
-  }
-
-  // Limpar filtro
-  void limparFiltroCategoria() {
-    categoriaSelecionada = null;
-    notifyListeners();
-  }
-
-
-}

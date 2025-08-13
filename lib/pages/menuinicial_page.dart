@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:padariavinhos/pages/fazer_pedido_page.dart';
-import 'package:padariavinhos/pages/fazer_orcamento_page.dart';
-import 'package:padariavinhos/pages/sua_conta_page.dart';
-import 'package:padariavinhos/pages/quem_somos_page.dart';
-import 'package:padariavinhos/pages/opcoes_page.dart';
-import 'package:padariavinhos/pages/login_page.dart';
-import 'package:padariavinhos/pages/telainicial.dart';
-import 'package:padariavinhos/pages/cadastro_produto_page.dart';
-import 'package:padariavinhos/router.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:padariavinhos/widgets/auth_panel.dart';
+
+import 'package:padariavinhos/services/auth_notifier.dart';
 
 class MenuInicial extends StatelessWidget {
-
-  static route() =>
-      MaterialPageRoute(
-        builder: (context) => const MenuInicial(),
-      );
-
   const MenuInicial({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -55,18 +46,16 @@ class MenuInicial extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  _buildBotao(context, 'Faça seu pedido', Colors.green, '/pedido'),
+                  _buildBotao(context, 'Veja seus pedidos', Colors.red, '/meuspedidos'),
+                  _buildBotao(context, 'Sua Conta', Colors.green, '/conta'),
+                  _buildBotao(context, 'Quem Somos', Colors.red, '/quem-somos', pequeno: true),
+                  _buildBotao(context, 'Opções', Colors.green, '/opcoes', pequeno: true),
+                  _buildBotao(context, 'Cadastrar Produto', Colors.red, '/cadastro-produto', pequeno: true),
+                  _buildBotao(context, 'SAIR', Colors.grey[850]!, null, isLogout: true),
 
-                  // Botões
-                  buildBotao(context, 'Faça seu pedido', Colors.green),
-                  buildBotao(context, 'Faça seu orçamento', Colors.red),
-                  buildBotao(context, 'Sua Conta', Colors.green),
-                  buildBotao(context, 'Quem Somos', Colors.red, pequeno: true),
-                  buildBotao(context, 'Opções', Colors.green, pequeno: true),
-                  buildBotao(
-                      context, 'Cadastrar Produto', Colors.red, pequeno: true),
-                  buildBotao(context, 'SAIR', Colors.grey[850]!),
-
-
+                  const SizedBox(height: 40),
+                  const AuthStatusPanel(),
                 ],
               ),
             ),
@@ -75,68 +64,26 @@ class MenuInicial extends StatelessWidget {
       ),
     );
   }
+  Widget _buildBotao(
+      BuildContext context,
+      String texto,
+      Color cor,
+      String? rota, {
+        bool pequeno = false,
+        bool isLogout = false,
+      }) {
+    final largura = MediaQuery.of(context).size.width;
 
-  Widget buildBotao(BuildContext context, String texto, Color cor,
-      {bool pequeno = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: SizedBox(
-        width: pequeno
-            ? MediaQuery
-            .of(context)
-            .size
-            .width * 0.5
-            : MediaQuery
-            .of(context)
-            .size
-            .width * 0.8,
+        width: pequeno ? largura * 0.5 : largura * 0.8,
         child: ElevatedButton(
-          onPressed: () {
-            if (texto == 'SAIR') {
-              showDialog(
-                context: context,
-                builder: (context) =>
-                    AlertDialog(
-                      title: const Text('Confirmação'),
-                      content: const Text('Tem certeza que deseja sair?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancelar'),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            Navigator.pop(context); // Fecha o diálogo primeiro
-                            await FirebaseAuth.instance.signOut();
-                            context.go('/login'); // Navega para a tela de login corretamente
-                          },
-                          child: const Text('Sair'),
-                        ),
-                      ],
-                    ),
-              );
-            }
-            else {
-              switch (texto) {
-                case 'Faça seu pedido':
-                  context.push ('/pedido');
-                  break;
-                case 'Faça seu orçamento':
-                  context.push('/orcamento');
-                  break;
-                case 'Sua Conta':
-                  context.push('/conta');
-                  break;
-                case 'Quem Somos':
-                  context.push('/quem-somos');
-                  break;
-                case 'Opções':
-                  context.push('/opcoes');
-                  break;
-                case 'Cadastrar Produto':
-                  context.push('/cadastro-produto');
-                  break;
-              }
+          onPressed: () async {
+            if (isLogout) {
+              _confirmarLogout(context);
+            } else if (rota != null)  {
+              context.push(rota);
             }
           },
           style: ElevatedButton.styleFrom(
@@ -147,13 +94,39 @@ class MenuInicial extends StatelessWidget {
               borderRadius: BorderRadius.circular(30),
             ),
           ),
-          child: Text(
-            texto,
-            style: const TextStyle(fontSize: 16),
-          ),
-
+          child: Text(texto, style: const TextStyle(fontSize: 16)),
         ),
       ),
     );
   }
+
+  void _confirmarLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirmação'),
+        content: const Text('Tem certeza que deseja sair?'),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final auth = Provider.of<AuthNotifier>(context, listen: false);
+              await auth.logout(); // notificará GoRouter se estiver integrado
+              dialogContext.pop(); // fecha o diálogo
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (context.mounted) {
+                  context.go('/splash'); // redireciona
+                }
+              });
+            },
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

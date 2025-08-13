@@ -36,6 +36,115 @@ class _OpcoesPageState extends State<OpcoesPage> {
     }
   }
 
+  Future<void> deleteAccountWithPassword(String password) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        Navigator.pop(context); // fecha loading
+        throw Exception("Nenhum usuário autenticado.");
+      }
+
+      final uid = user.uid;
+
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(cred);
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+
+      final pedidos = await FirebaseFirestore.instance
+          .collection('pedidos')
+          .where('usuarioId', isEqualTo: uid)
+          .get();
+      for (var doc in pedidos.docs) {
+        await doc.reference.delete();
+      }
+
+      final carrinho = await FirebaseFirestore.instance
+          .collection('carrinho')
+          .where('usuarioId', isEqualTo: uid)
+          .get();
+      for (var doc in carrinho.docs) {
+        await doc.reference.delete();
+      }
+
+      await user.delete();
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("A conta e todos os dados foram excluídos com sucesso!")),
+      );
+
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
+    } catch (e) {
+      Navigator.pop(context); // fecha loading
+      print("Erro ao excluir conta: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erro: ${e.toString()}")),
+      );
+    }
+  }
+
+  void confirmarExclusaoConta() {
+    final senhaController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text("Excluir conta"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("Digite sua senha para confirmar a exclusão da conta."),
+            SizedBox(height: 10),
+            TextField(
+              controller: senhaController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Senha",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () {
+              final senha = senhaController.text.trim();
+              if (senha.isNotEmpty) {
+                Navigator.pop(context);
+                deleteAccountWithPassword(senha);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Digite a senha para continuar")),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: Text("Excluir"),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
   Future<void> updateUserData() async {
     try {
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
@@ -54,25 +163,116 @@ class _OpcoesPageState extends State<OpcoesPage> {
   }
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text("Editar Dados")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text(
-              'Email autenticado: $emailAutenticado',
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+      appBar: AppBar(
+        title: Text(
+          "Editar Dados",
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red, Colors.black, Colors.green],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            SizedBox(height: 10),
-            TextFormField(controller: nameController, decoration: InputDecoration(labelText: 'Nome')),
-            TextFormField(controller: addressController, decoration: InputDecoration(labelText: 'Endereço')),
-            TextFormField(controller: addressNumberController, decoration: InputDecoration(labelText: 'Número')),
-            TextFormField(controller: phoneController, decoration: InputDecoration(labelText: 'Telefone'), keyboardType: TextInputType.phone),
-            SizedBox(height: 20),
-            ElevatedButton(onPressed: updateUserData, child: Text("Salvar Alterações")),
-          ],
-        ),// ... os outros campos (nome, endereço, etc.),
+          ),
+        ),
+      ),
+      backgroundColor: Colors.grey[100],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            constraints: BoxConstraints(maxWidth: 500),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white,
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Email autenticado:',
+                  style: theme.textTheme.titleMedium!.copyWith(color: Colors.grey[600]),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  emailAutenticado,
+                  style: theme.textTheme.titleMedium!.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                SizedBox(height: 24),
+
+                _buildTextField(nameController, "Nome", Icons.person),
+                SizedBox(height: 16),
+                _buildTextField(addressController, "Endereço", Icons.home),
+                SizedBox(height: 16),
+                _buildTextField(addressNumberController, "Número", Icons.format_list_numbered),
+                SizedBox(height: 16),
+                _buildTextField(phoneController, "Telefone", Icons.phone, keyboardType: TextInputType.phone),
+
+                SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: updateUserData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    "Salvar Alterações",
+                    style: TextStyle(fontSize: 16, color: Colors.white,),
+                  ),
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: confirmarExclusaoConta,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    "Excluir Conta",
+                    style: TextStyle(fontSize: 16, color: Colors.white,),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+      {TextInputType keyboardType = TextInputType.text}) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.black),
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.black, width: 2),
+        ),
       ),
     );
   }

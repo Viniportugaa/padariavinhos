@@ -1,7 +1,10 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:padariavinhos/models/produto.dart';
 
 import '../services/product_service.dart';
 
@@ -34,50 +37,86 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     'assets/FotosdaPadaria/Bolos/BoloChocCastanha.jpg',
     'assets/FotosdaPadaria/Lanches/Americano.png',
     'assets/FotosdaPadaria/LogoeAfins/Paes.jpg',
-    'assets/FotosdaPadaria/Outro/Frango_assado.png'
+    'assets/FotosdaPadaria/Outro/Frango_assado.png',
     'assets/FotosdaPadaria/Bolos/BoloCenoura.jpg',
     'assets/LogoNovaAppVinhos.png',
     'assets/LogoPadariaVinhosBranco.png',
-    'assets/FotosdaPadaria/Bolos/BoloIndiano.jpg'
+    'assets/FotosdaPadaria/Bolos/BoloIndiano.jpg',
+    'assets/FotosdaPadaria/Pratos/Contra-filé.jpg',
+    'assets/FotosdaPadaria/Pratos/Pratofrango.jpg',
+    'assets/FotosdaPadaria/Pratos/ftcalabresa.jpg',
+    'assets/FotosdaPadaria/Pratos/fthamburguer.jpg',
+    'assets/FotosdaPadaria/Pratos/ftrosbife.jpg',
+    'assets/FotosdaPadaria/Pratos/parmegiana.jpg'
   ];
 
-  List<String> _imagemSelecionada = [];
+  List<File> _imagensSelecionadas = [];
+  List<String> _imagensUrls = [];
+
+  Future<void> _selecionarImagens() async{
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage(imageQuality: 75);
+
+    if(pickedFiles != null){
+      setState(() {
+        _imagensSelecionadas = pickedFiles.map((file) => File(file.path)).toList();
+      });
+    }
+  }
+
+  Future<void> _uploadImagens() async{
+    _imagensUrls.clear();
+
+    for(var file in _imagensSelecionadas){
+      final nomeArquivo = DateTime.now().millisecondsSinceEpoch.toString();
+      final storageRef = FirebaseStorage.instance.ref().child('produtos/$nomeArquivo.jpg');
+      final uploadTask = await storageRef.putFile(file);
+      final url = await uploadTask.ref.getDownloadURL();
+      _imagensUrls.add(url);
+    }
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_imagemSelecionada.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione pelo menos uma imagem')),
-      );
-      return;
-    }
-
     setState(() => _isSaving = true);
 
     try {
+      // 1. Faz upload das imagens e obtém URLs
+      final List<String> uploadedImages = await _service.uploadMultipleImages(
+        _imagensSelecionadas, // sua lista de imagens selecionadas
+      );
 
-      await _service.saveProduct(
+      // 2. Cria objeto Produto
+      final produto = Produto(
+        id: FirebaseFirestore.instance.collection('produtos').doc().id,
         nome: _nomeController.text.trim(),
         descricao: _descController.text.trim(),
-        preco: double.parse(_precoController.text.replaceAll(',', '.')),
-        imageUrl: _imagemSelecionada,
+        imageUrl: uploadedImages,
+        preco: double.parse(
+          _precoController.text.replaceAll(',', '.'),
+        ),
         disponivel: _disponivel,
         category: _categoriaSelecionada!,
       );
 
+      // 3. Salva produto no Firestore
+      await _service.saveProduct(produto);
+
+      // 4. Fecha tela e/ou mostra sucesso
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Produto cadastrado com sucesso!')),
+        const SnackBar(content: Text('Produto salvo com sucesso!')),
       );
-      Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao cadastrar: $e')),
+        SnackBar(content: Text('Erro ao salvar produto: $e')),
       );
     } finally {
       setState(() => _isSaving = false);
     }
   }
+
 
   @override
   void dispose() {
@@ -174,55 +213,55 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
                   // Botão para selecionar múltiplas imagens
                   const Text('Selecione as imagens do produto:'),
                   const SizedBox(height: 8),
-                  GridView.count(
-                    crossAxisCount: 3, // ou 2, dependendo do espaço disponível
+                  ElevatedButton.icon(
+                    onPressed: _selecionarImagens,
+                    icon: const Icon(Icons.image),
+                    label: const Text('Selecionar imagens da Galeria'),
+                  ),
+                  const SizedBox(height: 8),
+
+                  GridView.builder(
                     shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 4 / 3,
-                    children: _imagensDisponiveis.map((imgPath) {
-                      final isSelected = _imagemSelecionada.contains(imgPath);
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _imagemSelecionada.remove(imgPath);
-                            } else {
-                              _imagemSelecionada.add(imgPath);
-                            }
-                          });
-                        },
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                imgPath,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                              ),
+                    itemCount: _imagensSelecionadas.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemBuilder: (_, index){
+                      return Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              _imagensSelecionadas[index],
+                              fit: BoxFit.cover,
+                              width: double.infinity,
                             ),
-                            if (isSelected)
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black45,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.greenAccent,
-                                  size: 30,
-                                ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: InkWell(
+                              onTap: (){
+                                setState(() {
+                                  _imagensSelecionadas.removeAt(index);
+                                });
+                              },
+                              child: const CircleAvatar(
+                                backgroundColor: Colors.black54,
+                                radius: 12,
+                                child: Icon(Icons.close, size: 16, color: Colors.white),
                               ),
-                          ],
-                        ),
+                            )
+                          )
+                        ],
                       );
-                    }).toList(),
+                    },
                   ),
 
-                  const SizedBox(height: 16),
+
 
                   // Botão salvar
                   SizedBox(
