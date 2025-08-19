@@ -10,6 +10,7 @@ import 'package:padariavinhos/widgets/lista_categorias.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
+import 'package:padariavinhos/widgets/product_card_horizontal.dart';
 
 class FazerPedidoPage extends StatefulWidget {
 
@@ -130,36 +131,35 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
   Widget _buildProdutos() {
     return Consumer<ProductsNotifier>(
       builder: (context, notifier, _) {
-        if (!Provider.of<AuthNotifier>(context).isOnline) {
+        final isOnline = Provider.of<AuthNotifier>(context).isOnline;
+
+        if (!isOnline) {
           return const Center(child: Text('Sem conexão. Catálogo indisponível.'));
         }
 
         if (notifier.loading) {
           return const Center(child: CircularProgressIndicator());
-          debugPrint('Carregando');
         }
 
-        if (notifier.produtos.isEmpty) {
-          debugPrint('Esta vazio');
-
+        if (notifier.produtosFiltrados.isEmpty) {
           return const Center(child: Text('Nenhum produto disponível'));
         }
 
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero).animate(animation),
-              child: child,
-            ),
-          ),
-          child: ProductGrid(
-            key: ValueKey(notifier.categoriaSelecionada ?? 'todos'),
-            produtos: notifier.produtosFiltrados,
-            onAddToCart: (produto) => _showAddToCartSheet(context, produto),
-            scrollController: _scrollController,
-          ),
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: notifier.produtosFiltrados.length,
+          itemBuilder: (context, index) {
+            final produto = notifier.produtosFiltrados[index];
+
+            return ProductCardHorizontal(
+              produto: produto,
+              onAddToCart: () => _showAddToCartSheet(context, produto),
+              onViewDetails: () {
+                // Aqui você pode abrir detalhes se quiser
+              },
+            );
+          },
         );
       },
     );
@@ -278,10 +278,10 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
                       final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
 
                       final acompanhamentosSelecionadosObjetos = _acompanhamentos
-                          .where((a) => acompanhamentosIds.contains(a.nome))
+                          .where((a) => acompanhamentosSelecionados.contains(a.nome))
                           .toList();
 
-                      carrinho.adicionar(
+                      carrinho.adicionarProduto(
                         produto,
                         quantidade,
                         observacao: observacoes,
@@ -295,7 +295,7 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
                           content: Text('Adicionado: $quantidade x ${produto.nome}'
                               '${nomesSelecionados.isNotEmpty ? 'com $nomesSelecionados' : ''}',
                           ),
-                          ),
+                        ),
                       );
                     },
                     child: const Text('Adicionar ao Carrinho'),

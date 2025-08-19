@@ -5,8 +5,9 @@ import 'package:padariavinhos/services/carrinhos_provider.dart';
 import 'package:padariavinhos/services/pedido_service.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:padariavinhos/models/pedido.dart';
-import 'package:padariavinhos/services/pedido_service.dart';
-
+import 'package:padariavinhos/models/item_carrinho.dart';
+import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/models/acompanhamento.dart';
 
 class ConclusaoPedidoPage extends StatefulWidget {
   @override
@@ -15,16 +16,16 @@ class ConclusaoPedidoPage extends StatefulWidget {
 
 class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
   bool _isLoading = false;
+  String _formaPagamento = 'Pix';
+  final List<String> _formasPagamento = ['Pix', 'Débito', 'Crédito', 'Voucher', 'Dinheiro'];
 
-  void _finalizarPedido() async{
-    if (_isLoading) return; // proteção extra
+  void _finalizarPedido() async {
+    if (_isLoading) return;
     setState(() => _isLoading = true);
 
     final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
     final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
     final user = authNotifier.user;
-
-    debugPrint('AuthNotifier user no finalizarPedido: $user');
 
     if (!authNotifier.isAuthenticated || user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,9 +42,10 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
       setState(() => _isLoading = false);
       return;
     }
+
     try {
       final pedido = Pedido(
-        id: '', // será gerado automaticamente
+        id: '',
         numeroPedido: 0,
         userId: user.uid,
         nomeUsuario: user.nome,
@@ -53,10 +55,11 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
         status: 'pendente',
         data: DateTime.now(),
         impresso: false,
+        endereco: user.enderecoFormatado,
+        formaPagamento: _formasPagamento,
       );
 
       await PedidoService().criarPedido(pedido);
-
       carrinho.limpar();
 
       if (context.mounted) {
@@ -110,6 +113,53 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
     );
   }
 
+  void _editarAcompanhamentosDialog(BuildContext context, int index, ItemCarrinho item) {
+    final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
+    List<Acompanhamento> selecionados = List.from(item.acompanhamentos ?? []);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Acompanhamentos'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: item.produto.acompanhamentosDisponiveis.map((acomp) {
+              final isSelected = selecionados.any((a) => a.id == acomp.id);
+              return CheckboxListTile(
+                title: Text(acomp.nome),
+                value: isSelected,
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      if (selecionados.length < 3) {
+                        selecionados.add(acomp);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Máximo de 3 acompanhamentos.')),
+                        );
+                      }
+                    } else {
+                      selecionados.remove(acomp);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              carrinho.atualizarAcompanhamentosPorIndice(index, selecionados);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final carrinho = Provider.of<CarrinhoProvider>(context);
@@ -127,6 +177,8 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
       );
     }
 
+    final user = authNotifier.user!;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Confirmar Pedido'),
@@ -140,118 +192,167 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
               : Column(
             children: [
               ElevatedButton.icon(
-                onPressed: () {
-                  context.go('/pedido');
-                },
-                icon: Icon(Icons.arrow_back),
-                label: Text('Voltar'),
+                onPressed: () => context.go('/pedido'),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Voltar'),
               ),
+              const SizedBox(height: 12),
+
+              // Cartão de Endereço
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          user.enderecoFormatado,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Cartão de Forma de Pagamento
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payment, color: Colors.green),
+                      const SizedBox(width: 8),
+                      const Text('Forma de Pagamento:', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _formaPagamento,
+                        items: _formasPagamento
+                            .map((f) => DropdownMenuItem(
+                          value: f,
+                          child: Text(f),
+                        ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) setState(() => _formaPagamento = value);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Lista de Itens do Pedido
               Expanded(
                 child: ListView.separated(
                   itemCount: carrinho.itens.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final item = carrinho.itens[index];
 
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            item.produto.imageUrl.isNotEmpty
-                                ? item.produto.imageUrl.first
-                                : 'assets/imagem_padrao.png',
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.produto.nome,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.remove),
-                                    onPressed: () {
-                                      carrinho.diminuirQuantidadePorIndice(index);
-                                    },
-                                  ),
-                                  Text('${item.quantidade}', style: const TextStyle(fontSize: 16)),
-                                  IconButton(
-                                    icon: const Icon(Icons.add),
-                                    onPressed: () {
-                                      carrinho.aumentarQuantidadePorIndice(index);
-
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () {
-                                      carrinho.removerPorIndice(index);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            if ((item.observacao ?? '').isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  'Obs: ${item.observacao}',
-                                  style: const TextStyle(
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 14,
-                                    color: Colors.black87,
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.asset(
+                                    item.produto.imageUrl.isNotEmpty
+                                        ? item.produto.imageUrl.first
+                                        : 'assets/imagem_padrao.png',
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                                   ),
                                 ),
-                              ),
-                              TextButton.icon(
-                                onPressed: () {
-                                  _editarObservacaoDialog(context, item.produto.id, item.observacao);
-                                },
-                                icon: const Icon(Icons.edit_note_outlined),
-                                label: const Text('Editar observação'),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.produto.nome,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      Text('Qtd: ${item.quantidade}', style: const TextStyle(fontSize: 14)),
+                                      if ((item.observacao ?? '').isNotEmpty)
+                                        Text('Obs: ${item.observacao}',
+                                            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 14)),
+                                      if ((item.acompanhamentos ?? []).isNotEmpty)
+                                        Text('Acomp.: ${item.acompanhamentos!.join(', ')}',
+                                            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 14)),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  'R\$ ${(item.produto.preco * item.quantidade).toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _editarObservacaoDialog(context, item.produto.id, item.observacao);
+                                  },
+                                  icon: const Icon(Icons.edit_note_outlined),
+                                  label: const Text('Editar Obs'),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _editarAcompanhamentosDialog(context, index, item);
+                                  },
+                                  icon: const Icon(Icons.fastfood),
+                                  label: const Text('Editar Acomp.'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        Text(
-                          'R\$ ${(item.produto.preco * item.quantidade).toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                      ),
                     );
                   },
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Total
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total:',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   Text('R\$ ${carrinho.total.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                 ],
               ),
               const SizedBox(height: 24),
+
+              // Botão Finalizar
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.orangeAccent,
                     textStyle: const TextStyle(fontSize: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

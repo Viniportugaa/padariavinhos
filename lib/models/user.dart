@@ -9,6 +9,9 @@ class User {
   final String email;
   final String role;
   final Timestamp createdAt;
+  final String cep;
+  final String tipoResidencia;
+  final String? ramalApartamento;
 
   User({
     required this.uid,
@@ -19,7 +22,18 @@ class User {
     required this.email,
     required this.role,
     required this.createdAt,
+    required this.cep,
+    required this.tipoResidencia,
+    this.ramalApartamento,
+
   });
+
+  String get enderecoFormatado {
+    final ramal = ramalApartamento != null && ramalApartamento!.isNotEmpty
+        ? ' - Apt $ramalApartamento'
+        : '';
+    return '$endereco, $numeroEndereco - CEP: $cep ($tipoResidencia$ramal)';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -31,6 +45,9 @@ class User {
       'email': email,
       'role': role,
       'created_at': createdAt,
+      'cep': cep,
+      'tipo_residencia': tipoResidencia,
+      'ramal_apartamento': ramalApartamento,
     };
   }
 
@@ -44,6 +61,9 @@ class User {
       email: map['email'],
       role: map['role'],
       createdAt: map['created_at'],
+      cep: map['cep'],
+      tipoResidencia: map['tipo_residencia'] ?? "casa",
+      ramalApartamento: map['ramal_apartamento'],
     );
   }
 }

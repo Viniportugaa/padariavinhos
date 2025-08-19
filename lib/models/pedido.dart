@@ -12,6 +12,8 @@ class Pedido {
   final String status;
   final DateTime data;
   final bool impresso;
+  final String endereco;
+  final List<String> formaPagamento;
 
 
   Pedido({
@@ -25,6 +27,9 @@ class Pedido {
     required this.status,
     required this.data,
     this.impresso = false,
+    required this.endereco,
+    required this.formaPagamento,
+
   });
 
   factory Pedido.fromMap(Map<String, dynamic> map, String id) {
@@ -45,7 +50,8 @@ class Pedido {
           ? (map['data'] as Timestamp).toDate()
           : DateTime.now(),
       impresso: map['impresso'] ?? false,
-
+      endereco: map['endereco'] ?? 'Sem endereço',
+      formaPagamento: List<String>.from(map['formaPagamento'] ?? ['Pix']),
     );
   }
 
@@ -59,6 +65,9 @@ class Pedido {
       'total': total,
       'status': status,
       'data': Timestamp.fromDate(data),
+      'impresso': impresso,
+      'endereco': endereco,
+      'formaPagamento': formaPagamento,
     };
   }
 }

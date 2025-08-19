@@ -22,6 +22,11 @@ import 'package:padariavinhos/services/carrinhos_provider.dart';
 import 'package:padariavinhos/services/transitions.dart';
 import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
+import 'package:padariavinhos/pages/admin/admin_combo_page.dart';
+import 'package:padariavinhos/pages/product_detalhe_page.dart';
+import 'package:padariavinhos/pages/LGPD_page.dart';
+import 'package:padariavinhos/widgets/imagem_produto.dart';
+import 'package:padariavinhos/models/produto.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -46,7 +51,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         return '/login';
       }
 
-      if (!isLoggedIn && !['/login', '/signup'].contains(location)) {
+      if (!isLoggedIn && !['/login', '/signup', '/lgpd'].contains(location)) {
         return '/login';
       }
 
@@ -81,6 +86,14 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       ),
 
       GoRoute(
+        path: '/produto/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ProductDetailPage(produtoId: id);
+        },
+      ),
+
+      GoRoute(
         path: '/listaproduto',
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: AdminProdutosPage(), state: state),
@@ -89,7 +102,43 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/lista',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const ListaPedidosPage(), state: state),
+            fadeTransitionPage(child: ListaPedidosPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/signin',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: LoginPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/signup',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: SignUpPage(), state: state),
+      ),
+      GoRoute(
+        path: '/lgpd',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: const PDFScreen(), state: state),
+      ),
+
+      GoRoute(
+        path: '/comboadmin',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: AdminCombosPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/cadastro-produto',
+        pageBuilder: (c, s) =>
+            fadeTransitionPage(child: CadastroProdutoPage(), state: s),
+      ),
+      GoRoute(
+        path: '/imagem-produto/:id',
+        builder: (context, state) {
+          final produto = state.extra as Produto;
+          return ImagemProdutoPage(produto: produto);
+        },
       ),
       GoRoute(
         path: '/offline',

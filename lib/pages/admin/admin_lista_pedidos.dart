@@ -86,15 +86,25 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
       }
       User usuario = await _buscarUsuario(pedido.userId); // ajuste o campo uidUsuario conforme seu model Pedido
 
+      String enderecoCompleto = "${usuario.endereco}, Nº ${usuario.numeroEndereco}";
+
+      if (usuario.tipoResidencia == "apartamento" &&
+          usuario.ramalApartamento != null &&
+          usuario.ramalApartamento!.isNotEmpty) {
+        enderecoCompleto += ", Ap. ${usuario.ramalApartamento}";
+      }
+
+      enderecoCompleto += " - CEP: ${usuario.cep}";
+
       print("Iniciando impressao do pedido ${pedido.id}...");
       printer.printNewLine();
       printer.printCustom("PADARIA", 3, 1);
-      printer.printCustom("Pedido nº ${pedido.id}", 2, 0);
+      printer.printCustom("Pedido nº ${pedido.numeroPedido}", 2, 0);
       printer.printNewLine();
       printer.printLeftRight("Cliente:", pedido.nomeUsuario, 1);
       printer.printLeftRight("Telefone:", pedido.telefone, 1);
-      printer.printLeftRight("Endereco:", usuario.endereco, 1);
-      printer.printLeftRight("Numero:", usuario.numeroEndereco,0);
+      printer.printCustom("Endereço:", 1, 0);
+      printer.printCustom(enderecoCompleto, 0, 0);
       printer.printLeftRight("Data:", DateFormat('dd/MM/yyyy HH:mm').format(pedido.data.toLocal()), 1);
       printer.printNewLine();
 

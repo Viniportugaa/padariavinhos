@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 
 class LoginPage extends StatefulWidget {
-  static route() => MaterialPageRoute(builder: (context) => const LoginPage());
   const LoginPage({super.key});
 
   @override
@@ -68,10 +67,6 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Welcome',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
         automaticallyImplyLeading: false,
       ),
       body: Container(
@@ -184,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                   // Link para Signup
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(context, SignUpPage.route());
+                      context.go('/signup');
                     },
                     child: RichText(
                       text: TextSpan(

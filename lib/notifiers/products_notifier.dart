@@ -14,7 +14,6 @@ class ProductsNotifier extends ChangeNotifier {
 
   String? categoriaSelecionada;
 
-  // Lista fixa de categorias
   final List<String> categoriasFixas = [
     'Festividade', 'Bolos', 'Doce', 'Lanches',
     'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',

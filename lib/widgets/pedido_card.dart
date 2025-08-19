@@ -87,8 +87,12 @@ class PedidoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Pedido ${pedido.id.substring(0, 5)}',
+                  'Pedido ${pedido.numeroPedido}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  pedido.endereco,
+                  style: const TextStyle(color: Colors.grey),
                 ),
                 Text(
                   'R\$ ${pedido.total.toStringAsFixed(2)}',

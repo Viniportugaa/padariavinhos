@@ -12,7 +12,7 @@ class CarrinhoProvider extends ChangeNotifier {
     return _itens.fold(0.0, (soma, item) => soma + item.subtotal);
   }
 
-  void adicionar(
+  void adicionarProduto(
       Produto produto,
       int quantidade, {
         String? observacao,
@@ -21,7 +21,7 @@ class CarrinhoProvider extends ChangeNotifier {
         double? precoCombo,
       }) {
     final indexExistente = _itens.indexWhere((item) =>
-        item.produto.id == produto.id &&
+    item.produto.id == produto.id &&
         item.observacao == observacao &&
         item.isCombo == isCombo &&
         item.precoCombo == precoCombo &&
@@ -128,6 +128,35 @@ class CarrinhoProvider extends ChangeNotifier {
       diminuirQuantidadePorIndice(index);
     }
   }
+
+  /// Atualiza os acompanhamentos do item pelo índice
+  void atualizarAcompanhamentosPorIndice(int index, List<Acompanhamento> acompanhamentos) {
+    if (index >= 0 && index < _itens.length) {
+      _itens[index].acompanhamentos = List.from(acompanhamentos);
+      notifyListeners();
+    }
+  }
+
+  /// Atualiza os acompanhamentos do item pelo produtoId e opções
+  void atualizarAcompanhamentosPorProdutoId({
+    required String produtoId,
+    List<Acompanhamento>? acompanhamentos,
+    String? observacao,
+    bool isCombo = false,
+    double? precoCombo,
+  }) {
+    final index = _buscarIndicePorProduto(
+      produtoId: produtoId,
+      observacao: observacao,
+      isCombo: isCombo,
+      precoCombo: precoCombo,
+      acompanhamentos: null, // não considerar a lista antiga para localizar o item
+    );
+    if (index >= 0 && acompanhamentos != null) {
+      atualizarAcompanhamentosPorIndice(index, acompanhamentos);
+    }
+  }
+
 
   /// Remove item do carrinho pelo produtoId e opções
   void removerPorProdutoId({
