@@ -73,7 +73,6 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
         nomeUsuario: user.nome,
         telefone: user.telefone,
         itens: carrinho.itens,
-        total: carrinho.total,
         status: 'pendente',
         data: DateTime.now(),
         impresso: false,

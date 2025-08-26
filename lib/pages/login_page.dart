@@ -33,21 +33,16 @@ class _LoginPageState extends State<LoginPage> {
     final fcmToken = await FirebaseMessaging.instance.getToken();
     if (fcmToken == null) return;
 
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-
-    // Para token único:
-    await userRef.update({'fcmToken': fcmToken}).catchError((_) {
-      // Se o campo não existir ainda, cria
-      userRef.set({'fcmToken': fcmToken}, SetOptions(merge: true));
-    });
-
-    // Se quiser suportar múltiplos dispositivos por usuário, use array:
-    await userRef.update({
-      'fcmTokens': FieldValue.arrayUnion([fcmToken])
-    }).catchError((_) {
-      userRef.set({'fcmTokens': [fcmToken]}, SetOptions(merge: true));
-    });
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('tokens')
+        .doc(fcmToken)
+        .set({
+      'last_used': Timestamp.now(),
+    }, SetOptions(merge: true));
   }
+
 
   Future<void> loginUserWithEmailAndPassword(BuildContext context) async {
     if (!formKey.currentState!.validate()) return;
@@ -74,12 +69,8 @@ class _LoginPageState extends State<LoginPage> {
 
       final authNotifier = context.read<AuthNotifier>();
       await authNotifier.login(); // Atualiza estado interno
-
-      if (role == 'admin') {
-        context.go('/admin');
-      } else {
-        context.go('/menu');
-      }
+      if (!mounted) return;
+      context.go(role == 'admin' ? '/admin' : '/menu');
 
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

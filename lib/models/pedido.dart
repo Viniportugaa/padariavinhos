@@ -8,15 +8,13 @@ class Pedido {
   final String nomeUsuario;
   final String telefone;
   final List<ItemCarrinho> itens;
-  final double total;
   final double? totalFinal;
-  final String status;
+  String status;
   final DateTime data;
-  final bool impresso;
+  bool impresso;
   final String endereco;
   final List<String> formaPagamento;
   final bool valorAjustado;
-
 
   Pedido({
     required this.id,
@@ -25,7 +23,6 @@ class Pedido {
     required this.nomeUsuario,
     required this.telefone,
     required this.itens,
-    required this.total,
     this.totalFinal,
     required this.status,
     required this.data,
@@ -35,6 +32,10 @@ class Pedido {
     this.valorAjustado = false,
 
   });
+
+  double get total => itens.fold(0.0, (sum, item) => sum + item.subtotal);
+
+  double get totalCalculado => itens.fold(0.0, (sum, item) => sum + item.subtotal);
 
   factory Pedido.fromMap(Map<String, dynamic> map, String id) {
     return Pedido(
@@ -46,9 +47,6 @@ class Pedido {
       itens: (map['itens'] as List<dynamic>? ?? [])
           .map((e) => ItemCarrinho.fromMap(e as Map<String, dynamic>))
           .toList(),
-      total: (map['total'] != null)
-          ? (map['total'] as num).toDouble()
-          : 0.0,
       totalFinal: (map['totalFinal'] != null)
           ? (map['totalFinal'] as num).toDouble()
           : null,

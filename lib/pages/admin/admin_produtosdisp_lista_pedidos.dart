@@ -17,6 +17,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
   ];
 
   String categoriaSelecionada = 'Todas';
+  String filtroNome = '';
 
   Future<List<Acompanhamento>> carregarTodosAcompanhamentos() async {
     final snapshot = await FirebaseFirestore.instance.collection('acompanhamentos').get();
@@ -134,7 +135,6 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
       appBar: AppBar(
         title: const Text('Painel Admin - Produtos'),
         backgroundColor: Colors.deepOrange,
-        automaticallyImplyLeading: true,
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.deepOrange,
@@ -144,7 +144,20 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
       ),
       body: Column(
         children: [
-          // FILTRO POR CATEGORIA
+          // FILTRO POR NOME
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: const InputDecoration(
+                labelText: 'Buscar produto',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (valor) {
+                setState(() => filtroNome = valor.toLowerCase());
+              },
+            ),
+          ),
           SizedBox(
             height: 50,
             child: ListView.builder(
@@ -182,12 +195,12 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                 var produtosDocs = snapshot.data!.docs;
 
                 // FILTRO POR CATEGORIA
-                if (categoriaSelecionada != 'Todas') {
-                  produtosDocs = produtosDocs.where((doc) {
-                    final data = doc.data()! as Map<String, dynamic>;
-                    return (data['category'] ?? '').toString() == categoriaSelecionada;
-                  }).toList();
-                }
+                produtosDocs = produtosDocs.where((doc) {
+                  final data = doc.data()! as Map<String, dynamic>;
+                  final matchesCategory = categoriaSelecionada == 'Todas' || (data['category'] ?? '') == categoriaSelecionada;
+                  final matchesName = filtroNome.isEmpty || (data['nome'] ?? '').toString().toLowerCase().contains(filtroNome);
+                  return matchesCategory && matchesName;
+                }).toList();
 
                 if (produtosDocs.isEmpty) return const Center(child: Text('Nenhum produto encontrado.'));
 
@@ -219,16 +232,26 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                                 Expanded(
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.shade50,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(Icons.fastfood, size: 60, color: Colors.deepOrange),
-                                  ),
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              image: produto.imageUrl != null && produto.imageUrl!.isNotEmpty
+                                  ? DecorationImage(
+                                image: NetworkImage(produto.imageUrl!.first),
+                                fit: BoxFit.cover,
+                              )
+                                  : null,
+                            ),
+                            child: produto.imageUrl == null || produto.imageUrl!.isEmpty
+                                ? const Icon(Icons.fastfood, size: 60, color: Colors.deepOrange)
+                                : null,
+                          ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(produto.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 const SizedBox(height: 4),
                                 Text(produto.descricao, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                                const SizedBox(height: 4),
+                                Text('Acomp.: ${acompanhsIds.join(", ")}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10)),
                                 const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -245,9 +268,17 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                                             style: const TextStyle(color: Colors.white, fontSize: 12)),
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, color: Colors.deepOrange),
-                                      onPressed: () => _editarAcompanhamentos(context, doc.id, acompanhsIds),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, color: Colors.deepOrange),
+                                          onPressed: () => context.go('/cadastro-produto', extra: produto),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.settings, color: Colors.deepOrange),
+                                          onPressed: () => _editarAcompanhamentos(context, doc.id, acompanhsIds),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

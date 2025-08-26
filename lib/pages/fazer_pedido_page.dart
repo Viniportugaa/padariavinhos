@@ -375,7 +375,7 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
                         final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
                         carrinho.adicionarProduto(
                           produto,
-                          quantidade,
+                          quantidade.toDouble(),
                           observacao: observacoes,
                           acompanhamentos: selecionados,
                           precoEstimado: precoEstimado,

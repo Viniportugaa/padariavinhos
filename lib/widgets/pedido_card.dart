@@ -1,118 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:padariavinhos/models/pedido.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:padariavinhos/models/user.dart';
+import 'package:provider/provider.dart';
+import 'package:padariavinhos/services/pedido_provider.dart';
+import 'package:padariavinhos/services/carrinhos_provider.dart';
 
 class PedidoCard extends StatelessWidget {
-  final Pedido pedido;
-  final VoidCallback onEditar;
-  final VoidCallback onFinalizar;
-  final VoidCallback onImprimir;
+  const PedidoCard({super.key});
 
-  const PedidoCard({
-    super.key,
-    required this.pedido,
-    required this.onEditar,
-    required this.onFinalizar,
-    required this.onImprimir,
-  });
-
-  Color getCorDeFundo() {
-    if (pedido.impresso == true && pedido.status == 'finalizado') {
-      return Colors.green.shade100;
-    } else if (pedido.impresso == true && pedido.status == 'em preparo') {
-      return Colors.blue.shade100;
-    } else if (pedido.impresso != true && pedido.status == 'pendente') {
-      return Colors.yellow.shade100;
-    }
+  Color _getCorDeFundo(pedido) {
+    if (pedido.impresso && pedido.status == 'finalizado') return Colors.green.shade100;
+    if (pedido.impresso && pedido.status == 'em preparo') return Colors.blue.shade100;
+    if (!pedido.impresso && pedido.status == 'pendente') return Colors.yellow.shade100;
     return Colors.grey.shade200;
   }
 
-  Color getCorBorda() {
-    if (pedido.impresso == true && pedido.status == 'finalizado') {
-      return Colors.green;
-    } else if (pedido.impresso == true && pedido.status == 'em preparo') {
-      return Colors.blue;
-    } else if (pedido.impresso != true && pedido.status == 'pendente') {
-      return Colors.orange;
-    }
+  Color _getCorBorda(pedido) {
+    if (pedido.impresso && pedido.status == 'finalizado') return Colors.green;
+    if (pedido.impresso && pedido.status == 'em preparo') return Colors.blue;
+    if (!pedido.impresso && pedido.status == 'pendente') return Colors.orange;
     return Colors.grey;
-  }
-
-  Future<User?> _buscarUsuario() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(pedido.userId)
-        .get();
-    if (!doc.exists) return null;
-    return User.fromMap(doc.data()!);
   }
 
   @override
   Widget build(BuildContext context) {
-    final dataFormatada = DateFormat('dd/MM/yyyy HH:mm').format(pedido.data);
+    return Consumer<PedidoProvider>(
+      builder: (context, provider, _) {
+        final pedido = provider.pedido;
+        if (pedido == null) return const SizedBox.shrink();
 
-    return FutureBuilder<User?>(
-      future: _buscarUsuario(),
-      builder: (context, snapshot) {
-        final usuario = snapshot.data;
-        final nomeUsuario = usuario?.nome ?? 'Carregando...';
-        final endereco = usuario?.enderecoFormatado ?? '';
+        final usuario = provider.usuario;
+        final endereco = usuario != null
+            ? "${usuario.endereco}, Nº ${usuario.numeroEndereco}${usuario.tipoResidencia == 'apartamento' && usuario.ramalApartamento != null ? ', Ap. ${usuario.ramalApartamento}' : ''} - CEP: ${usuario.cep}"
+            : '';
 
-        return GestureDetector(
-          onTap: () => _mostrarDetalhesPedido(context, pedido, onImprimir),
-          child: Card(
-            elevation: 4,
-            color: getCorDeFundo(),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: getCorBorda(), width: 2),
+        return Card(
+          elevation: 4,
+          color: _getCorDeFundo(pedido),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: _getCorBorda(pedido), width: 2),
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: ListTile(
+            title: Text('Pedido ${pedido.numeroPedido}'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Cliente: ${usuario?.nome ?? pedido.nomeUsuario}'),
+                if (endereco.isNotEmpty) Text('Endereço: $endereco'),
+                Text('Data: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.data)}'),
+                Text('Status: ${pedido.status}'),
+              ],
             ),
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  // Lado esquerdo: informações do pedido
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Pedido ${pedido.numeroPedido}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text("Feito por: $nomeUsuario"),
-                        if (endereco.isNotEmpty) Text("Endereço: $endereco"),
-                        Text("Data: ${DateFormat('dd/MM/yyyy HH:mm').format(
-                            pedido.data)}"),
-                        Text("Status: ${pedido.status}"),
-                      ],
-                    ),
-                  ),
-                  // Lado direito: total do pedido
-                  Text(
-                    'R\$ ${pedido.total.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            trailing: Text('R\$ ${pedido.total.toStringAsFixed(2)}'),
+            onTap: () => _mostrarDetalhesPedido(context, provider),
           ),
         );
       },
     );
   }
 
-  /// 🔹 ShowModal com detalhes do pedido
-  void _mostrarDetalhesPedido(BuildContext context, Pedido pedido,
-      VoidCallback onImprimir) {
+  void _mostrarDetalhesPedido(BuildContext context, PedidoProvider provider) {
+    final pedido = provider.pedido;
+    if (pedido == null) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -120,129 +71,118 @@ class PedidoCard extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) {
-        return FutureBuilder<User?>(
-          future: _buscarUsuario(), // busca o usuário
-          builder: (context, userSnapshot) {
-            final usuario = userSnapshot.data;
-            final nomeUsuario = usuario?.nome ?? 'Carregando...';
-            final endereco = usuario?.enderecoFormatado ?? '';
-
-            return StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('pedidos')
-                  .doc(pedido.id)
-                  .snapshots(),
-              builder: (context, pedidoSnapshot) {
-                if (!pedidoSnapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final pedidoAtualizado = Pedido.fromMap(
-                  pedidoSnapshot.data!.data() as Map<String, dynamic>,
-                  pedidoSnapshot.data!.id,
-                );
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Pedido #${pedido.numeroPedido}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text("Cliente: ${provider.usuario?.nome ?? 'Carregando...'}", style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(
+                "Status: ${pedido.status}",
+                style: TextStyle(
+                  color: pedido.status == 'pendente'
+                      ? Colors.orange
+                      : pedido.status == 'em preparo'
+                      ? Colors.blue
+                      : Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Divider(),
+              ...pedido.itens.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                final isVendidoPorPeso = item.produto.vendidoPorPeso;
 
                 return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Pedido #${pedidoAtualizado.numeroPedido}",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Nome e endereço do cliente
-                        Text(
-                          "Cliente: $nomeUsuario",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        if (endereco.isNotEmpty)
-                          Text("Endereço: $endereco"),
-                        const SizedBox(height: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.produto.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+
+                      if (isVendidoPorPeso)
                         Row(
                           children: [
-                            const Text(
-                              "Status: ",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              pedidoAtualizado.status,
-                              style: TextStyle(
-                                color: pedidoAtualizado.status == 'pendente'
-                                    ? Colors.orange
-                                    : pedidoAtualizado.status == 'em preparo'
-                                    ? Colors.blue
-                                    : Colors.green,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: item.quantidade.toString(),
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(labelText: 'Quantidade (kg)'),
+                                enabled: pedido.status == 'pendente',
+                                onChanged: (val) {
+                                  final kg = double.tryParse(val.replaceAll(',', '.')) ?? 0;
+                                  if (pedido.status != 'pendente') return;
+
+                                  // Atualiza no Firestore via provider usando índice
+                                  provider.atualizarItemPedidoPorIndice(index: index, quantidade: kg);
+
+                                  // Atualiza localmente no carrinho
+                                  final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
+                                  item.quantidade = kg;
+                                  carrinho.atualizarItem(item);
+                                },
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            // Valor por kg (Alterar se precisar)
+                            // Expanded(
+                            //   child: TextFormField(
+                            //     initialValue: (item.valorFinal ?? item.produto.preco).toStringAsFixed(2),
+                            //     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            //     decoration: const InputDecoration(labelText: 'Valor/kg'),
+                            //     enabled: pedido.status == 'pendente',
+                            //     onChanged: (val) {
+                            //       final v = double.tryParse(val.replaceAll(',', '.')) ?? item.produto.preco;
+                            //
+                            //       // Atualiza o item no carrinho
+                            //       final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
+                            //       item.valorFinal = v;
+                            //       carrinho.atualizarItem(item);
+                            //     },
+                            //   ),
+                            // ),
                           ],
                         ),
-                        const Divider(),
-                        ...pedidoAtualizado.itens.map((item) =>
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    "${item.quantidade}x ${item.produto.nome}"),
-                                if (item.observacao != null &&
-                                    item.observacao!.isNotEmpty)
-                                  Text("Obs: ${item.observacao}"),
-                                if (item.acompanhamentos != null &&
-                                    item.acompanhamentos!.isNotEmpty)
-                                  Text(
-                                    "Acomp.: ${item.acompanhamentos!.map((
-                                        a) => a.nome).join(', ')}",
-                                  ),
-                                const SizedBox(height: 8),
-                              ],
-                            )),
-                        const Divider(),
-                        Wrap(
-                          spacing: 12,
-                          children: [
-                            if (pedidoAtualizado.status == 'pendente')
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('pedidos')
-                                      .doc(pedidoAtualizado.id)
-                                      .update({'status': 'em preparo'});
-                                },
-                                child: const Text('Marcar como Visto'),
-                              ),
-                            if (pedidoAtualizado.status == 'em preparo')
-                              ElevatedButton(
-                                onPressed: onImprimir,
-                                child: const Text('Imprimir'),
-                              ),
-                            if (pedidoAtualizado.status == 'em preparo')
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('pedidos')
-                                      .doc(pedidoAtualizado.id)
-                                      .update({'status': 'finalizado'});
-                                },
-                                child: const Text('Finalizar Pedido'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
+
+                      if (!isVendidoPorPeso)
+                        Text('Quantidade: ${item.quantidade % 1 == 0 ? item.quantidade.toInt() : item.quantidade}'),
+
+                      // Subtotal
+                      Consumer<CarrinhoProvider>(
+                        builder: (_, carrinho, __) {
+                          final subtotal = isVendidoPorPeso
+                              ? ((item.valorFinal ?? item.produto.preco) * item.quantidade)
+                              : item.subtotal;
+                          return Text('Subtotal: R\$ ${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold));
+                        },
+                      ),
+
+                      const Divider(),
+                    ],
                   ),
                 );
-              },
-            );
-          },
-        );
-      },
+              }),
+              const Divider(),
+              Wrap(
+                spacing: 12,
+                children: [
+                  if (pedido.status == 'pendente')
+                    ElevatedButton(onPressed: provider.editar, child: const Text('Marcar como Visto')),
+                  if (pedido.status == 'em preparo')
+                    ElevatedButton(onPressed: () => provider.imprimir(context), child: const Text('Imprimir')),
+                  if (pedido.status == 'em preparo')
+                    ElevatedButton(onPressed: provider.finalizar, child: const Text('Finalizar Pedido')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

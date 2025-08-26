@@ -64,12 +64,19 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> saveFcmToken(String uid) async {
     final fcmToken = await FirebaseMessaging.instance.getToken();
     if (fcmToken != null) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final role = userDoc.data()?['role'] ?? 'cliente';
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('tokens')
           .doc(fcmToken)
-          .set({'created_at': Timestamp.now()});
+          .set({
+        'created_at': Timestamp.now(),
+        'last_used': Timestamp.now(),
+        'role': role,
+      });
     }
   }
 

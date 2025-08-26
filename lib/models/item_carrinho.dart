@@ -6,7 +6,7 @@ import 'package:padariavinhos/models/acompanhamento.dart';
 class ItemCarrinho {
   final Produto produto;
   final Combo? combo;
-  int quantidade;
+  double quantidade;
   double precoEstimado;
   double totalEstimado;
   double? valorFinal;
@@ -36,6 +36,22 @@ class ItemCarrinho {
     this.acompanhamentosPorProduto,
   });
 
+  double get subtotal {
+    if (produto.vendidoPorPeso) {
+      final valor = valorFinal ?? produto.preco;
+      return valor * quantidade;
+    }
+
+    final precoBase = isCombo ? (precoCombo ?? 0.0) : produto.preco;
+    final precoAcomp = (!isCombo)
+        ? (produto.category == 'Pratos'
+        ? valorAcompanhamentosPratos
+        : (acompanhamentos?.fold<double>(0.0, (soma, a) => soma + a.preco) ?? 0.0))
+        : 0.0;
+
+    return (precoBase + precoAcomp) * quantidade;
+  }
+
   double get valorAcompanhamentosPratos {
     // Se não for prato ou não houver acompanhamentos
     if (produto.category != 'Pratos' || acompanhamentos == null || acompanhamentos!.isEmpty) {
@@ -51,23 +67,10 @@ class ItemCarrinho {
     return extras * sortedPrecos.first; // sortedPrecos.first não é nulo
   }
 
-  double get subtotal {
-    final precoBase = isCombo ? (precoCombo ?? 0.0) : produto.preco;
-
-    final precoAcomp = (!isCombo)
-        ? (produto.category == 'Pratos'
-        ? valorAcompanhamentosPratos
-        : (acompanhamentos?.fold<double>(0.0, (soma, a) => soma + a.preco) ?? 0.0))
-        : 0.0;
-
-    return (precoBase + precoAcomp) * quantidade;
-  }
-
   factory ItemCarrinho.fromMap(Map<String, dynamic> map) {
     return ItemCarrinho(
       produto: Produto.fromMap(map['produto'], map['produtoId']),
-      quantidade: map['quantidade'] ?? 1,
-      observacao: map['observacao'],
+      quantidade: (map['quantidade'] ?? 1).toDouble(),      observacao: map['observacao'],
       acompanhamentos: map['acompanhamentos'] != null
           ? List<Map<String, dynamic>>.from(map['acompanhamentos'])
           .map((acompMap) => Acompanhamento.fromMap(acompMap, acompMap['id'] ?? ''))

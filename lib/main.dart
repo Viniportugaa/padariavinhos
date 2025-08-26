@@ -9,13 +9,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
-
+import 'package:go_router/go_router.dart';
 // Notifiers
 import 'notifiers/products_notifier.dart';
 import 'services/carrinhos_provider.dart';
 import 'services/auth_notifier.dart';
 import 'notifiers/config_notifier.dart';
 import 'router.dart';
+import 'package:padariavinhos/services/pedido_provider.dart';
 
 /// 🔹 Handler para notificações em background/terminated
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -25,6 +26,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'pedidos_channel', // ID do canal
+  'Notificações de Pedidos', // Nome
+  description: 'Notificações importantes de pedidos',
+  importance: Importance.high,
+  playSound: true,
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +48,12 @@ Future<void> main() async {
     await FirebaseAppCheck.instance.activate(
       androidProvider: AndroidProvider.debug,
     );
-    print("✅ App Check ativado");
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
+    print("✅ App Check ativado");
+
 
   // Configura handler de background
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -58,7 +71,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProductsNotifier()),
         ChangeNotifierProvider(create: (_) => CarrinhoProvider()),
         ChangeNotifierProvider(create: (_) => AuthNotifier()),
-        ChangeNotifierProvider(create: (_) => ConfigNotifier()..startListening()),      ],
+        ChangeNotifierProvider(create: (_) => ConfigNotifier()..startListening()),
+        ChangeNotifierProvider(create: (_) => PedidoProvider(pedidoId: ''),),
+      ],
       child: const MyApp(),
     ),
   );
@@ -105,10 +120,10 @@ class _MyAppState extends State<MyApp> {
 
     // Clique na notificação
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("➡️ Usuário clicou na notificação");
-      print("Dados extras: ${message.data}");
-      // Exemplo: redirecionar para página do pedido
-      // context.push("/pedido/${message.data['pedidoId']}");
+      final pedidoId = message.data['pedidoId'];
+      if (pedidoId != null) {
+        context.push("/pedido/$pedidoId"); // ou: PedidoPage(pedidoId: pedidoId)
+      }
     });
 
     // Mensagem recebida com app fechado
@@ -135,16 +150,15 @@ class _MyAppState extends State<MyApp> {
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification != null && !kIsWeb) {
-      const AndroidNotificationDetails androidDetails =
-      AndroidNotificationDetails(
-        'channel_id',
-        'Pedidos',
-        channelDescription: 'Notificações de novos pedidos',
-        importance: Importance.max,
+      final androidDetails = AndroidNotificationDetails(
+        channel.id,
+        channel.name,
+        channelDescription: channel.description,
+        importance: Importance.high,
         priority: Priority.high,
+        playSound: true,
       );
-      const NotificationDetails platformDetails =
-      NotificationDetails(android: androidDetails);
+      final platformDetails = NotificationDetails(android: androidDetails);
 
       await flutterLocalNotificationsPlugin.show(
         notification.hashCode,
@@ -155,7 +169,6 @@ class _MyAppState extends State<MyApp> {
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final router = createRouter(context.read<AuthNotifier>());

@@ -49,6 +49,15 @@ class ProductService {
         snapshot.docs.map((doc) => Produto.fromMap(doc.data(), doc.id)).toList());
   }
 
+  Future<void> updateProduct(Produto produto) async {
+    try {
+      final docRef = _firestore.collection('produtos').doc(produto.id);
+
+      await docRef.update(produto.toMap());
+    } catch (e) {
+      throw Exception("Erro ao atualizar produto: $e");
+    }
+  }
 
   Future<void> alterarDisponibilidade({
     required String produtoId,

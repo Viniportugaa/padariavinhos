@@ -6,7 +6,8 @@ import 'package:padariavinhos/models/produto.dart';
 import '../services/product_service.dart';
 
 class CadastroProdutoPage extends StatefulWidget {
-  const CadastroProdutoPage({Key? key}) : super(key: key);
+  final Produto? produto;
+  const CadastroProdutoPage({Key? key, this.produto}) : super(key: key);
 
   @override
   State<CadastroProdutoPage> createState() => _CadastroProdutoPageState();
@@ -18,6 +19,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   final _descController  = TextEditingController();
   final _precoController = TextEditingController();
   bool  _disponivel = true;
+  bool _vendidoPorPeso = false;
   bool  _isSaving   = false;
   final _service = ProductService();
 
@@ -27,7 +29,23 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   ];
   String? _categoriaSelecionada;
 
-  List<File> _imagensSelecionadas = [];
+  List<File> _novasImagens = [];
+  List<String> _imagensExistentes = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.produto != null) {
+      _nomeController.text = widget.produto!.nome;
+      _descController.text = widget.produto!.descricao;
+      _precoController.text = widget.produto!.preco.toStringAsFixed(2);
+      _categoriaSelecionada = widget.produto!.category;
+      _disponivel = widget.produto!.disponivel;
+      _vendidoPorPeso = widget.produto!.vendidoPorPeso;
+      _imagensExistentes = widget.produto!.imageUrl ?? [];
+    }
+  }
 
   Future<void> _selecionarImagens() async {
     final picker = ImagePicker();
@@ -35,7 +53,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
 
     if (pickedFiles != null) {
       setState(() {
-        _imagensSelecionadas = pickedFiles.map((file) => File(file.path)).toList();
+        _novasImagens.addAll(pickedFiles.map((file) => File(file.path)).toList());
       });
     }
   }
@@ -46,21 +64,28 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     setState(() => _isSaving = true);
 
     try {
-      final List<String> uploadedImages = await _service.uploadMultipleImages(_imagensSelecionadas);
+      final List<String> uploadedImages = await _service.uploadMultipleImages(_novasImagens);
+
+      final List<String> todasImagens = [..._imagensExistentes, ...uploadedImages];
 
       final produto = Produto(
-        id: FirebaseFirestore.instance.collection('produtos').doc().id,
+        id: widget.produto?.id ?? FirebaseFirestore.instance.collection('produtos').doc().id,
         nome: _nomeController.text.trim(),
         descricao: _descController.text.trim(),
-        imageUrl: uploadedImages,
+        imageUrl: todasImagens,
         preco: double.parse(_precoController.text.replaceAll(',', '.')),
         disponivel: _disponivel,
+        vendidoPorPeso: _vendidoPorPeso,
         category: _categoriaSelecionada!,
       );
 
-      // Salva produto
-      await _service.saveProduct(produto);
-
+      if (widget.produto != null) {
+        await _service.updateProduct(produto); // método de update
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produto atualizado com sucesso!')));
+      } else {
+        await _service.saveProduct(produto); // método de create
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produto cadastrado com sucesso!')));
+      }
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Produto salvo com sucesso!')),
@@ -87,9 +112,8 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('Cadastrar Produto'),
+        title: Text(widget.produto != null ? 'Editar Produto' : 'Cadastrar Produto'),
         backgroundColor: Colors.deepOrange,
-        automaticallyImplyLeading: true,
       ),
       body: Stack(
         children: [
@@ -103,12 +127,21 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
                   const SizedBox(height: 16),
                   _buildTextField(_descController, 'Descrição', maxLines: 3),
                   const SizedBox(height: 16),
-                  _buildTextField(_precoController, 'Preço (ex: 19.90)', prefixText: 'R\$ ', keyboardType: TextInputType.numberWithOptions(decimal: true)),
-                  const SizedBox(height: 16),
+                  _buildTextField(
+                    _precoController,
+                    'Preço (ex: 19.90)',
+                    prefixText: 'R\$ ',
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  ),                  const SizedBox(height: 16),
                   SwitchListTile(
                     title: const Text('Disponível'),
                     value: _disponivel,
                     onChanged: (val) => setState(() => _disponivel = val),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Vendido por Peso'),
+                    value: _vendidoPorPeso,
+                    onChanged: (val) => setState(() => _vendidoPorPeso = val),
                   ),
                   const SizedBox(height: 16),
                   _buildDropdown(),
@@ -175,6 +208,8 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   }
 
   Widget _buildImagePicker() {
+    final imagens = [..._imagensExistentes, ..._novasImagens.map((f) => f.path)];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,28 +228,36 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _imagensSelecionadas.length,
+          itemCount: imagens.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
           ),
           itemBuilder: (_, index) {
+            final isUrl = index < _imagensExistentes.length;
+            final imagePath = imagens[index];
             return Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    _imagensSelecionadas[index],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
+                  child: isUrl
+                      ? Image.network(imagePath, fit: BoxFit.cover, width: double.infinity)
+                      : Image.file(File(imagePath), fit: BoxFit.cover, width: double.infinity),
                 ),
                 Positioned(
                   top: 4,
                   right: 4,
                   child: InkWell(
-                    onTap: () => setState(() => _imagensSelecionadas.removeAt(index)),
+                    onTap: () {
+                      setState(() {
+                        if (isUrl) {
+                          _imagensExistentes.removeAt(index);
+                        } else {
+                          _novasImagens.removeAt(index - _imagensExistentes.length);
+                        }
+                      });
+                    },
                     child: const CircleAvatar(
                       backgroundColor: Colors.black54,
                       radius: 12,

@@ -12,9 +12,17 @@ class CarrinhoProvider extends ChangeNotifier {
     return _itens.fold(0.0, (soma, item) => soma + item.subtotal);
   }
 
+  void atualizarItem(ItemCarrinho item) {
+    final index = _itens.indexWhere((i) => i.idUnico == item.idUnico);
+    if (index >= 0) {
+      _itens[index] = item;
+      notifyListeners();
+    }
+  }
+
   void adicionarProduto(
       Produto produto,
-      int quantidade, {
+      double quantidade, {
         String? observacao,
         List<Acompanhamento>? acompanhamentos,
         bool isCombo = false,
@@ -49,24 +57,19 @@ class CarrinhoProvider extends ChangeNotifier {
   }
 
   void aumentarQuantidadePorIndice(int index) {
-    if (index >= 0 && index < _itens.length) {
-      _itens[index].quantidade++;
-      _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
-      notifyListeners();
-    }
+    _itens[index].quantidade++;
+    _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
+    notifyListeners();
   }
 
   void diminuirQuantidadePorIndice(int index) {
-    if (index >= 0 && index < _itens.length) {
-      if (_itens[index].quantidade > 1) {
-        _itens[index].quantidade--;
-        // Recalcula totalEstimado
-        _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
-      } else {
-        _itens.removeAt(index);
-      }
-      notifyListeners();
+    if (_itens[index].quantidade > 1) {
+      _itens[index].quantidade--;
+      _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
+    } else {
+      _itens.removeAt(index);
     }
+    notifyListeners();
   }
 
   void removerPorIndice(int index) {

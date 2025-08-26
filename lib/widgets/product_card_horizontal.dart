@@ -109,9 +109,7 @@ class ProductCardHorizontal extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          produto.vendidoPorPeso
-                              ? 'R\$ ${produto.preco.toStringAsFixed(2)} (estimado)'
-                              : 'R\$ ${produto.preco.toStringAsFixed(2)}',
+                          'R\$ ${produto.preco.toStringAsFixed(2)}${produto.vendidoPorPeso ? ' (estimado)' : ''}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -125,6 +123,26 @@ class ProductCardHorizontal extends StatelessWidget {
                 ],
               ),
             ),
+            if (produto.vendidoPorPeso)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Por Peso',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               bottom: 12,
               right: 12,

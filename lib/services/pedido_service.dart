@@ -60,7 +60,6 @@ class PedidoService {
         nomeUsuario: pedido.nomeUsuario,
         telefone: pedido.telefone,
         itens: pedido.itens,
-        total: pedido.total,
         status: pedido.status,
         data: pedido.data,
         impresso: pedido.impresso,

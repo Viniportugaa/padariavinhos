@@ -33,11 +33,35 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearTokensOnRoleChange = exports.notifyAdminNewPedido = void 0;
-// index.ts
+exports.clearTokensOnRoleChange = void 0;
 const admin = __importStar(require("firebase-admin"));
-admin.initializeApp(); // Inicialização única
-var adminovopedido_1 = require("./adminovopedido");
-Object.defineProperty(exports, "notifyAdminNewPedido", { enumerable: true, get: function () { return adminovopedido_1.notifyAdminNewPedido; } });
-var limparTokenstrocaRole_1 = require("./limparTokenstrocaRole");
-Object.defineProperty(exports, "clearTokensOnRoleChange", { enumerable: true, get: function () { return limparTokenstrocaRole_1.clearTokensOnRoleChange; } });
+const firestore_1 = require("firebase-functions/v2/firestore");
+const logger = __importStar(require("firebase-functions/logger"));
+// Função dispara quando o campo "role" do user muda
+exports.clearTokensOnRoleChange = (0, firestore_1.onDocumentUpdated)({ document: "users/{userId}" }, async (event) => {
+    const before = event.data?.before;
+    const after = event.data?.after;
+    const userId = event.params.userId;
+    if (!before || !after)
+        return;
+    const roleBefore = before.data()?.role;
+    const roleAfter = after.data()?.role;
+    // só faz algo se realmente mudou
+    if (roleBefore === roleAfter)
+        return;
+    logger.info(`[clearTokensOnRoleChange] Usuário ${userId} mudou de role: ${roleBefore} -> ${roleAfter}`);
+    // Apaga todos os tokens antigos do usuário
+    const tokensCol = admin.firestore()
+        .collection("users")
+        .doc(userId)
+        .collection("tokens");
+    const tokensSnap = await tokensCol.get();
+    if (tokensSnap.empty) {
+        logger.info(`[clearTokensOnRoleChange] Nenhum token para limpar do usuário ${userId}`);
+        return;
+    }
+    const batch = admin.firestore().batch();
+    tokensSnap.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    logger.info(`[clearTokensOnRoleChange] Tokens removidos do usuário ${userId}`);
+});
