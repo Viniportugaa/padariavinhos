@@ -52,6 +52,7 @@ class MenuAdmin extends StatelessWidget {
                   _buildBotao(context, 'Cadastrar Acompanhamento', Colors.green, '/acomp', pequeno: true),
                   _buildBotao(context, 'Cadastrar Produto', Colors.red, '/cadastro-produto', pequeno: true),
                   _buildBotao(context, 'Cadastrar Combo', Colors.red, '/comboadmin', pequeno: true),
+                  _buildBotao(context, 'Configurar Horário de Funcionamento', Colors.orangeAccent, '/config-abertura', pequeno: false),
                   _buildBotao(context, 'SAIR', Colors.grey[850]!, null, isLogout: true),
 
                   const SizedBox(height: 40),

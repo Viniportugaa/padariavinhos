@@ -191,6 +191,12 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
       final fim = inicio.add(Duration(days: 1));
       query = query.where('data', isGreaterThanOrEqualTo: inicio, isLessThan: fim);
     }
+    if (filtro == 'semana') {
+      final inicio = DateTime(hoje.year, hoje.month, hoje.day - (hoje.weekday - 1));
+      final fim = inicio.add(const Duration(days: 7));
+      query = query.where('data', isGreaterThanOrEqualTo: inicio, isLessThan: fim);
+    }
+
 
     return query.snapshots();
   }

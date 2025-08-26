@@ -12,8 +12,8 @@ class AdminProdutosPage extends StatefulWidget {
 class _AdminProdutosPageState extends State<AdminProdutosPage> {
   final List<String> categoriasFixas = [
     'Todas',
-    'Festividade', 'Bolos', 'Doce', 'Lanches',
-    'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
+    'Festividade', 'Pratos', 'Doce', 'Lanches',
+    'Bolos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
   ];
 
   String categoriaSelecionada = 'Todas';

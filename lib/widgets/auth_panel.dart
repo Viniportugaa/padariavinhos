@@ -14,8 +14,8 @@ class AuthStatusPanel extends StatelessWidget {
     debugPrint('[AuthStatusPanel] Online: ${auth.isOnline}');
     debugPrint('[AuthStatusPanel] Papel: ${auth.role ?? 'Não definido'}');
     debugPrint('[AuthStatusPanel] Splash finalizada: ${auth.splashFinished}');
-    if (auth.systemMessage.value != null) {
-      debugPrint('[AuthStatusPanel] Mensagem: ${auth.systemMessage.value}');
+    if (auth.systemMessage != null) {
+      debugPrint('[AuthStatusPanel] Mensagem: ${auth.systemMessage}');
     }
 
     return Card(
@@ -32,8 +32,8 @@ class AuthStatusPanel extends StatelessWidget {
             Text('🌐 Online: ${auth.isOnline}'),
             Text('🧑 Papel: ${auth.role ?? 'Não definido'}'),
             Text('⏳ Splash finalizada: ${auth.splashFinished}'),
-            if (auth.systemMessage.value != null)
-              Text('⚠️ Mensagem: ${auth.systemMessage.value}', style: const TextStyle(color: Colors.red)),
+            if (auth.systemMessage!= null)
+              Text('⚠️ Mensagem: ${auth.systemMessage}', style: const TextStyle(color: Colors.red)),
           ],
         ),
       ),

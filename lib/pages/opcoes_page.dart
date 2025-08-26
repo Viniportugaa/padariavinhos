@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
+import 'package:flutter/services.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -8,12 +10,20 @@ class OpcoesPage extends StatefulWidget {
 }
 
 class _OpcoesPageState extends State<OpcoesPage> {
+  final _formKey = GlobalKey<FormState>();
+
   final nameController = TextEditingController();
   final addressController = TextEditingController();
   final addressNumberController = TextEditingController();
   final phoneController = TextEditingController();
-  String emailAutenticado = '';
+  final cepController = TextEditingController();
+  final ramalApartamentoController = TextEditingController();
 
+  String _tipoResidencia = 'casa';
+
+  final _cepFormatter = MaskedInputFormatter('#####-###');
+
+  String emailAutenticado = '';
   late String uid;
 
   @override
@@ -25,6 +35,25 @@ class _OpcoesPageState extends State<OpcoesPage> {
     loadUserData();
   }
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    addressController.dispose();
+    addressNumberController.dispose();
+    phoneController.dispose();
+    cepController.dispose();
+    ramalApartamentoController.dispose();
+    super.dispose();
+  }
+
+  String _onlyDigits(String s) => s.replaceAll(RegExp(r'\D'), '');
+
+  String _formatCep(String raw) {
+    final digits = _onlyDigits(raw);
+    if (digits.length != 8) return raw;
+    return '${digits.substring(0, 5)}-${digits.substring(5)}';
+  }
+
   Future<void> loadUserData() async {
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     final data = doc.data();
@@ -33,9 +62,15 @@ class _OpcoesPageState extends State<OpcoesPage> {
       addressController.text = data['endereco'] ?? '';
       addressNumberController.text = data['numero_endereco'] ?? '';
       phoneController.text = data['telefone'] ?? '';
+      cepController.text = _formatCep((data['cep'] ?? '').toString());
+      _tipoResidencia = (data['tipo_residencia'] ?? 'casa').toString();
+      ramalApartamentoController.text = (data['ramal_apartamento'] ?? '').toString();
+
+      if (mounted) setState(() {});
     }
   }
 
+  // ✅ Função auxiliar modular para excluir conta
   Future<void> deleteAccountWithPassword(String password) async {
     showDialog(
       context: context,
@@ -86,7 +121,6 @@ class _OpcoesPageState extends State<OpcoesPage> {
       );
 
       Navigator.of(context).popUntil((route) => route.isFirst);
-
     } catch (e) {
       Navigator.pop(context); // fecha loading
       print("Erro ao excluir conta: $e");
@@ -143,38 +177,43 @@ class _OpcoesPageState extends State<OpcoesPage> {
     );
   }
 
-
-
   Future<void> updateUserData() async {
+    if (!_formKey.currentState!.validate()) return;
+
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      final cepRaw = _onlyDigits(cepController.text.trim());
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'nome': nameController.text.trim(),
         'endereco': addressController.text.trim(),
         'numero_endereco': addressNumberController.text.trim(),
         'telefone': phoneController.text.trim(),
-      });
-      print('Dados atualizados com sucesso!');
-    } catch (e) {
-      print('Erro ao atualizar dados: $e');
+        'cep': cepRaw,
+        'tipo_residencia': _tipoResidencia,
+        'ramal_apartamento': _tipoResidencia == 'apartamento' &&
+            ramalApartamentoController.text.trim().isNotEmpty
+            ? ramalApartamentoController.text.trim()
+            : null,
+      }, SetOptions(merge: true));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar dados')),
+        SnackBar(content: Text('Dados atualizados com sucesso!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao atualizar dados: $e')),
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Editar Dados",
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: IconThemeData(color: Colors.white),
+        title: const Text("Editar Dados", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.red, Colors.black, Colors.green],
               begin: Alignment.topLeft,
@@ -188,71 +227,128 @@ class _OpcoesPageState extends State<OpcoesPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Container(
-            constraints: BoxConstraints(maxWidth: 500),
+            constraints: const BoxConstraints(maxWidth: 500),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.white,
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
-                ),
+              boxShadow: const [
+                BoxShadow(color: Colors.white, blurRadius: 20, offset: Offset(0, 8)),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Email autenticado:',
-                  style: theme.textTheme.titleMedium!.copyWith(color: Colors.grey[600]),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  emailAutenticado,
-                  style: theme.textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Email autenticado:',
+                      style: theme.textTheme.titleMedium!.copyWith(color: Colors.grey[600])),
+                  const SizedBox(height: 4),
+                  Text(emailAutenticado,
+                      style: theme.textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      )),
+                  const SizedBox(height: 24),
+                  _buildTextFormField(
+                    controller: nameController,
+                    label: "Nome",
+                    icon: Icons.person,
+                    textInputAction: TextInputAction.next,
                   ),
-                ),
-                SizedBox(height: 24),
-
-                _buildTextField(nameController, "Nome", Icons.person),
-                SizedBox(height: 16),
-                _buildTextField(addressController, "Endereço", Icons.home),
-                SizedBox(height: 16),
-                _buildTextField(addressNumberController, "Número", Icons.format_list_numbered),
-                SizedBox(height: 16),
-                _buildTextField(phoneController, "Telefone", Icons.phone, keyboardType: TextInputType.phone),
-
-                SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: updateUserData,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: addressController,
+                    label: "Endereço",
+                    icon: Icons.home,
+                    textInputAction: TextInputAction.next,
                   ),
-                  child: Text(
-                    "Salvar Alterações",
-                    style: TextStyle(fontSize: 16, color: Colors.white,),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: addressNumberController,
+                    label: "Número",
+                    icon: Icons.format_list_numbered,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
                   ),
-                ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: confirmarExclusaoConta,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: phoneController,
+                    label: "Telefone",
+                    icon: Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [PhoneInputFormatter(defaultCountryCode: 'BR')],
+                    textInputAction: TextInputAction.next,
                   ),
-                  child: Text(
-                    "Excluir Conta",
-                    style: TextStyle(fontSize: 16, color: Colors.white,),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: cepController,
+                    label: "CEP",
+                    icon: Icons.location_on,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [_cepFormatter],
+                    validator: (value) {
+                      final v = value?.trim() ?? '';
+                      if (v.isEmpty) return 'CEP não pode ser vazio';
+                      if (!RegExp(r'^\d{5}-?\d{3}$').hasMatch(v)) return 'CEP inválido';
+                      return null;
+                    },
+                    textInputAction: TextInputAction.next,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _tipoResidencia,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.apartment, color: Colors.black),
+                      labelText: 'Tipo de Residência',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.black, width: 2),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'casa', child: Text('Casa')),
+                      DropdownMenuItem(value: 'apartamento', child: Text('Apartamento')),
+                    ],
+                    onChanged: (v) => setState(() => _tipoResidencia = v ?? 'casa'),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: ramalApartamentoController,
+                    label: "Ramal / Apartamento (opcional)",
+                    icon: Icons.tag,
+                    requiredField: false,
+                    textInputAction: TextInputAction.done,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: updateUserData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text(
+                      "Salvar Alterações",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: confirmarExclusaoConta,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text(
+                      "Excluir Conta",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -260,18 +356,35 @@ class _OpcoesPageState extends State<OpcoesPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {TextInputType keyboardType = TextInputType.text}) {
-    return TextField(
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
+    bool requiredField = true,
+    TextInputAction textInputAction = TextInputAction.next,
+  }) {
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      textInputAction: textInputAction,
+      validator: validator ??
+              (value) {
+            if (requiredField && (value == null || value.trim().isEmpty)) {
+              return '$label não pode ser vazio';
+            }
+            return null;
+          },
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.black),
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.black, width: 2),
+          borderSide: const BorderSide(color: Colors.black, width: 2),
         ),
       ),
     );

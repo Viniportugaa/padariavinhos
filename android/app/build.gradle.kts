@@ -29,6 +29,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -50,6 +51,8 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-analytics") // opcional, mas útil para debug
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
 }
 
 // ✅ Garante aplicação do plugin do Firebase

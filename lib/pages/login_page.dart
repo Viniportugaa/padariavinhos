@@ -4,8 +4,10 @@ import 'package:padariavinhos/pages/menuinicial_page.dart';
 import 'package:padariavinhos/pages/signup_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -27,31 +29,65 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> updateFcmToken(String uid) async {
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    if (fcmToken == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+    // Para token único:
+    await userRef.update({'fcmToken': fcmToken}).catchError((_) {
+      // Se o campo não existir ainda, cria
+      userRef.set({'fcmToken': fcmToken}, SetOptions(merge: true));
+    });
+
+    // Se quiser suportar múltiplos dispositivos por usuário, use array:
+    await userRef.update({
+      'fcmTokens': FieldValue.arrayUnion([fcmToken])
+    }).catchError((_) {
+      userRef.set({'fcmTokens': [fcmToken]}, SetOptions(merge: true));
+    });
+  }
+
   Future<void> loginUserWithEmailAndPassword(BuildContext context) async {
     if (!formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
-      final auth = FirebaseAuth.instance;
       final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      if (userCredential.user != null) {
-        final authNotifier = context.read<AuthNotifier>();
-        await authNotifier.login();
+      final user = userCredential.user;
+      if (user == null) throw Exception("Usuário não encontrado");
 
-        if (authNotifier.role == 'admin') {
-          context.go('/admin');
-        } else {
-          context.go('/menu');
-        }
+      final uid = user.uid;
+
+      // Atualiza FCM token
+      await updateFcmToken(uid);
+
+      // Busca role do usuário
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final role = userDoc.data()?['role'] ?? 'cliente';
+
+      final authNotifier = context.read<AuthNotifier>();
+      await authNotifier.login(); // Atualiza estado interno
+
+      if (role == 'admin') {
+        context.go('/admin');
+      } else {
+        context.go('/menu');
       }
+
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Erro no login')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro: $e')),
       );
     } finally {
       setState(() => isLoading = false);

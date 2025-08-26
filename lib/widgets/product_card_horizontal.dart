@@ -109,11 +109,13 @@ class ProductCardHorizontal extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'R\$ ${produto.preco.toStringAsFixed(2)}',
+                          produto.vendidoPorPeso
+                              ? 'R\$ ${produto.preco.toStringAsFixed(2)} (estimado)'
+                              : 'R\$ ${produto.preco.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
-                            color: Colors.redAccent,
+                            color: Colors.lightGreen,
                           ),
                         ),
                       ],
@@ -153,7 +155,7 @@ class ProductCardHorizontal extends StatelessWidget {
   }
 }
 
-/// Página dedicada para exibir a imagem em tela cheia
+
 class ImagemProdutoPage extends StatelessWidget {
   final Produto produto;
 

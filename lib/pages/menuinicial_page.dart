@@ -48,10 +48,8 @@ class MenuInicial extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildBotao(context, 'Faça seu pedido', Colors.green, '/pedido'),
                   _buildBotao(context, 'Veja seus pedidos', Colors.red, '/meuspedidos'),
-                  _buildBotao(context, 'Sua Conta', Colors.green, '/conta'),
+                  _buildBotao(context, 'Sua Conta', Colors.green, '/opcoes'),
                   _buildBotao(context, 'Quem Somos', Colors.red, '/quem-somos', pequeno: true),
-                  _buildBotao(context, 'Opções', Colors.green, '/opcoes', pequeno: true),
-                  _buildBotao(context, 'Cadastrar Produto', Colors.red, '/cadastro-produto', pequeno: true),
                   _buildBotao(context, 'SAIR', Colors.grey[850]!, null, isLogout: true),
 
                   const SizedBox(height: 40),

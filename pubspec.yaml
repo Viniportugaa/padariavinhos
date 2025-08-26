@@ -42,7 +42,8 @@ dependencies:
   firebase_core: ^4.0.0
   firebase_auth: ^6.0.0
   firebase_storage: ^13.0.0
-  firebase_messaging: ^15.0.0
+  firebase_messaging: ^16.0.0
+  flutter_local_notifications: ^17.2.1
   cloud_firestore: ^6.0.0
   firebase_app_check: ^0.4.0
   image_picker: ^1.0.4
@@ -74,6 +75,10 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  fonts:
+    - family: Pacifico
+      fonts:
+        - asset: assets/fonts/Pacifico-Regular.ttf
   uses-material-design: true
   assets:
     - assets/

@@ -9,11 +9,13 @@ class Pedido {
   final String telefone;
   final List<ItemCarrinho> itens;
   final double total;
+  final double? totalFinal;
   final String status;
   final DateTime data;
   final bool impresso;
   final String endereco;
   final List<String> formaPagamento;
+  final bool valorAjustado;
 
 
   Pedido({
@@ -24,11 +26,13 @@ class Pedido {
     required this.telefone,
     required this.itens,
     required this.total,
+    this.totalFinal,
     required this.status,
     required this.data,
     this.impresso = false,
     required this.endereco,
     required this.formaPagamento,
+    this.valorAjustado = false,
 
   });
 
@@ -45,6 +49,9 @@ class Pedido {
       total: (map['total'] != null)
           ? (map['total'] as num).toDouble()
           : 0.0,
+      totalFinal: (map['totalFinal'] != null)
+          ? (map['totalFinal'] as num).toDouble()
+          : null,
       status: map['status'] ?? 'pendente',
       data: (map['data'] is Timestamp)
           ? (map['data'] as Timestamp).toDate()
@@ -52,6 +59,7 @@ class Pedido {
       impresso: map['impresso'] ?? false,
       endereco: map['endereco'] ?? 'Sem endereço',
       formaPagamento: List<String>.from(map['formaPagamento'] ?? ['Pix']),
+      valorAjustado: map['valorAjustado'] ?? false,
     );
   }
 
@@ -63,11 +71,13 @@ class Pedido {
       'telefone': telefone,
       'itens': itens.map((item) => item.toMap()).toList(),
       'total': total,
+      'totalFinal': totalFinal,
       'status': status,
       'data': Timestamp.fromDate(data),
       'impresso': impresso,
       'endereco': endereco,
       'formaPagamento': formaPagamento,
+      'valorAjustado': valorAjustado,
     };
   }
 }

@@ -5,14 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
 import 'package:padariavinhos/pages/admin/cadastro_acompanhamento_page.dart';
 import 'package:padariavinhos/pages/conclusao_pedido.dart';
-import 'package:padariavinhos/pages/fazer_orcamento_page.dart';
 import 'package:padariavinhos/pages/fazer_pedido_page.dart';
 import 'package:padariavinhos/pages/login_page.dart';
 import 'package:padariavinhos/pages/menuinicial_page.dart';
 import 'package:padariavinhos/pages/offline.dart';
 import 'package:padariavinhos/pages/opcoes_page.dart';
 import 'package:padariavinhos/pages/quem_somos_page.dart';
-import 'package:padariavinhos/pages/sua_conta_page.dart';
 import 'package:padariavinhos/pages/signup_page.dart';
 import 'package:padariavinhos/pages/splash_screen.dart';
 import 'package:padariavinhos/pages/cadastro_produto_page.dart';
@@ -20,13 +18,13 @@ import 'package:padariavinhos/pages/admin/menu_admin.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:padariavinhos/services/carrinhos_provider.dart';
 import 'package:padariavinhos/services/transitions.dart';
-import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
 import 'package:padariavinhos/pages/admin/admin_combo_page.dart';
 import 'package:padariavinhos/pages/product_detalhe_page.dart';
 import 'package:padariavinhos/pages/LGPD_page.dart';
 import 'package:padariavinhos/widgets/imagem_produto.dart';
 import 'package:padariavinhos/models/produto.dart';
+import 'package:padariavinhos/pages/admin/abertura_page.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -127,11 +125,15 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: AdminCombosPage(), state: state),
       ),
-
       GoRoute(
         path: '/cadastro-produto',
         pageBuilder: (c, s) =>
             fadeTransitionPage(child: CadastroProdutoPage(), state: s),
+      ),
+      GoRoute(
+        path: '/config-abertura',
+        pageBuilder: (c, s) =>
+            fadeTransitionPage(child: ConfigAberturaPage(), state: s),
       ),
       GoRoute(
         path: '/imagem-produto/:id',
@@ -150,20 +152,11 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: const LoginPage(), state: state),
       ),
-      GoRoute(
-        path: '/meuspedidos',
-        pageBuilder: (context, state) =>
-            fadeTransitionPage(child: MeuPedidoPage(), state: state),
-      ),
+
       GoRoute(
         path: '/signup',
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: const SignUpPage(), state: state),
-      ),
-      GoRoute(
-        path: '/conta',
-        pageBuilder: (context, state) =>
-            fadeTransitionPage(child: SuaContaPage(), state: state),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -180,7 +173,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
               onTap: (index) {
                 const paths = [
                   '/menu',
-                  '/orcamento',
+                  '/meuspedidos',
                   '/pedido',
                   '/opcoes',
                   '/conclusao-pedido'
@@ -191,7 +184,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
                 const BottomNavigationBarItem(
                     icon: Icon(Icons.home), label: 'Menu'),
                 const BottomNavigationBarItem(
-                    icon: Icon(Icons.receipt), label: 'Orçamento'),
+                    icon: Icon(Icons.receipt), label: 'Meus Pedidos'),
                 const BottomNavigationBarItem(
                     icon: Icon(Icons.add_circle), label: 'Pedido'),
                 const BottomNavigationBarItem(
@@ -239,9 +232,9 @@ GoRouter createRouter(AuthNotifier authNotifier) {
               pageBuilder: (c, s) =>
                   fadeTransitionPage(child: MenuInicial(), state: s)),
           GoRoute(
-              path: '/orcamento',
-              pageBuilder: (c, s) => fadeTransitionPage(
-                  child: FazerOrcamentoPage(), state: s)),
+              path: '/meuspedidos',
+              pageBuilder: (c, s) =>
+                  fadeTransitionPage(child: MeuPedidoPage(), state: s)),
           GoRoute(
               path: '/pedido',
               pageBuilder: (c, s) =>
@@ -276,7 +269,7 @@ int _getIndexFromLocation(String path) {
   switch (path) {
     case '/menu':
       return 0;
-    case '/orcamento':
+    case '/meuspedidos':
       return 1;
     case '/pedido':
       return 2;

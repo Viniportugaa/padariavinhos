@@ -12,6 +12,7 @@ class Produto {
   final List<Acompanhamento> acompanhamentosDisponiveis;
   final List<Acompanhamento> acompanhamentosSelecionados;
   final List<String> acompanhamentosIds;
+  final bool vendidoPorPeso;
 
   Produto({
     required this.id,
@@ -24,6 +25,7 @@ class Produto {
     this.acompanhamentosDisponiveis = const [],
     this.acompanhamentosSelecionados = const [],
     this.acompanhamentosIds = const [],
+    this.vendidoPorPeso = false,
   });
 
   factory Produto.fromMap(Map<String, dynamic> map, String id, {List<Acompanhamento>? acompanhamentosDisponiveis, List<Acompanhamento>? acompanhamentosSelecionados}) {
@@ -47,6 +49,7 @@ class Produto {
       acompanhamentosDisponiveis: acompanhamentosDisponiveis ?? [],
       acompanhamentosSelecionados: acompanhamentosSelecionados ?? [],
       acompanhamentosIds: List<String>.from(map['acompanhamentosIds'] ?? []),
+      vendidoPorPeso: map['vendidoPorPeso'] ?? false,
     );
   }
 
@@ -60,29 +63,7 @@ class Produto {
       'category': category,
       'acompanhamentosDisponiveis': acompanhamentosDisponiveis.map((a) => a.toMap()).toList(),
       'acompanhamentosSelecionados': acompanhamentosSelecionados.map((a) => a.toMap()).toList(),
+      'vendidoPorPeso': vendidoPorPeso,
     };
-  }
-  Produto copyWith({
-    String? id,
-    String? nome,
-    String? descricao,
-    List<String>? imageUrl,
-    double? preco,
-    bool? disponivel,
-    String? category,
-    List<Acompanhamento>? acompanhamentosDisponiveis,
-    List<Acompanhamento>? acompanhamentosSelecionados,
-  }) {
-    return Produto(
-      id: id ?? this.id,
-      nome: nome ?? this.nome,
-      descricao: descricao ?? this.descricao,
-      imageUrl: imageUrl ?? this.imageUrl,
-      preco: preco ?? this.preco,
-      disponivel: disponivel ?? this.disponivel,
-      category: category ?? this.category,
-      acompanhamentosDisponiveis: acompanhamentosDisponiveis ?? this.acompanhamentosDisponiveis,
-      acompanhamentosSelecionados: acompanhamentosSelecionados ?? this.acompanhamentosSelecionados,
-    );
   }
 }

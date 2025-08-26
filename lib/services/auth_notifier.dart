@@ -5,9 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:padariavinhos/models/user.dart' as app_user;
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 
 class AuthNotifier extends ChangeNotifier {
-
   app_user.User? _user;
   app_user.User? get user => _user;
 
@@ -24,12 +25,14 @@ class AuthNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   String? _role;
+  String? get role => _role;
 
-  final ValueNotifier<String?> systemMessage = ValueNotifier(null);
+  String? systemMessage;
+
+  Timer? _splashTimer;
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isOnline => _isOnline;
-  String? get role => _role;
 
   AuthNotifier() {
     _init();
@@ -41,16 +44,12 @@ class AuthNotifier extends ChangeNotifier {
     await _checkConnectivity();
 
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
-      // results agora é uma List<ConnectivityResult>
       _isOnline = results.contains(ConnectivityResult.wifi) ||
           results.contains(ConnectivityResult.mobile) ||
           results.contains(ConnectivityResult.ethernet);
 
       notifyListeners();
     });
-
-
-    await _loadAuthState();
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (!_isOnline) {
@@ -65,14 +64,14 @@ class AuthNotifier extends ChangeNotifier {
         if (atual == null) {
           await logout();
           usuarioDesconectado = true;
-          systemMessage.value = 'Sua conta foi removida. Faça login novamente.';
+          systemMessage = 'Sua conta foi removida. Faça login novamente.';
         } else {
-          await _persistLoginState(true);
           _isAuthenticated = true;
           await _loadUserData(user.uid);
+          await _requestNotificationPermission();
+          await _updateFcmToken(user.uid);
         }
       } else {
-        await _persistLoginState(false);
         _isAuthenticated = false;
         _role = null;
         _user = null;
@@ -82,7 +81,7 @@ class AuthNotifier extends ChangeNotifier {
       notifyListeners();
     });
 
-    Timer(const Duration(seconds: 3), () {
+    _splashTimer = Timer(const Duration(seconds: 3), () {
       splashFinished = true;
       notifyListeners();
     });
@@ -103,7 +102,7 @@ Future<void> _checkConnectivity() async {
       await user.reload();
       if (FirebaseAuth.instance.currentUser == null) {
         await logout();
-        systemMessage.value = 'Sessão expirada. Faça login novamente.';
+        systemMessage = 'Sessão expirada. Faça login novamente.';
       }
     }
   }
@@ -112,8 +111,9 @@ Future<void> _checkConnectivity() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _isAuthenticated = true;
-      await _persistLoginState(true);
       await _loadUserData(user.uid);
+      await _requestNotificationPermission();
+      await _updateFcmToken(user.uid);
       notifyListeners();
     }
   }
@@ -121,18 +121,8 @@ Future<void> _checkConnectivity() async {
     await FirebaseAuth.instance.signOut();
     _isAuthenticated = false;
     _role = null;
-    await _persistLoginState(false);
+    _user = null;
     notifyListeners();
-  }
-
-  Future<void> _persistLoginState(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isAuthenticated', value);
-  }
-
-  Future<void> _loadAuthState() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
   }
 
   Future<void> _loadUserData(String uid) async {
@@ -144,7 +134,7 @@ Future<void> _checkConnectivity() async {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
-        _user = app_user.User.fromMap(data); // ou seu método equivalente
+        _user = app_user.User.fromMap(data);
         _role = _user?.role;
       } else {
         _user = null;
@@ -159,7 +149,25 @@ Future<void> _checkConnectivity() async {
     notifyListeners();
   }
 
+  Future<void> _requestNotificationPermission() async {
+    final settings = await FirebaseMessaging.instance.requestPermission();
+    print("🔔 Permissão de notificações: ${settings.authorizationStatus}");
+  }
 
+  Future<void> _updateFcmToken(String uid) async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .update({'fcmToken': token});
+        print("✅ FCM Token atualizado no Firestore: $token");
+      }
+    } catch (e) {
+      print("❌ Erro ao atualizar FCM Token: $e");
+    }
+  }
 
   void markSplashFinished() {
     splashFinished = true;
@@ -170,7 +178,7 @@ Future<void> _checkConnectivity() async {
   void dispose() {
     _authSub.cancel();
     _connectivitySub.cancel();
-    systemMessage.dispose();
+    _splashTimer?.cancel();
     super.dispose();
   }
 }

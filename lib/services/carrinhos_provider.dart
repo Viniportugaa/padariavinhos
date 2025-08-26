@@ -19,6 +19,7 @@ class CarrinhoProvider extends ChangeNotifier {
         List<Acompanhamento>? acompanhamentos,
         bool isCombo = false,
         double? precoCombo,
+        double? precoEstimado,
       }) {
     final indexExistente = _itens.indexWhere((item) =>
     item.produto.id == produto.id &&
@@ -26,6 +27,9 @@ class CarrinhoProvider extends ChangeNotifier {
         item.isCombo == isCombo &&
         item.precoCombo == precoCombo &&
         _mesmosAcompanhamentos(item.acompanhamentos, acompanhamentos));
+
+    final precoBase = isCombo ? (precoCombo ?? 0.0) : produto.preco;
+    final precoFinal = precoEstimado ?? precoBase;
 
     if (indexExistente >= 0) {
       _itens[indexExistente].quantidade += quantidade;
@@ -37,6 +41,8 @@ class CarrinhoProvider extends ChangeNotifier {
         acompanhamentos: acompanhamentos,
         isCombo: isCombo,
         precoCombo: precoCombo,
+        precoEstimado: precoFinal,
+        totalEstimado: precoFinal * quantidade,
       ));
     }
     notifyListeners();
@@ -45,6 +51,7 @@ class CarrinhoProvider extends ChangeNotifier {
   void aumentarQuantidadePorIndice(int index) {
     if (index >= 0 && index < _itens.length) {
       _itens[index].quantidade++;
+      _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
       notifyListeners();
     }
   }
@@ -53,6 +60,8 @@ class CarrinhoProvider extends ChangeNotifier {
     if (index >= 0 && index < _itens.length) {
       if (_itens[index].quantidade > 1) {
         _itens[index].quantidade--;
+        // Recalcula totalEstimado
+        _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
       } else {
         _itens.removeAt(index);
       }
