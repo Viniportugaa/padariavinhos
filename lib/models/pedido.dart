@@ -1,5 +1,6 @@
 import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class Pedido {
   final int numeroPedido;
@@ -12,9 +13,14 @@ class Pedido {
   String status;
   final DateTime data;
   bool impresso;
-  final String endereco;
+  final String? endereco;
   final List<String> formaPagamento;
   final bool valorAjustado;
+  final double frete;
+
+  final String tipoEntrega;
+  final DateTime? dataEntrega;
+  final DateTime? horaEntrega;
 
   Pedido({
     required this.id,
@@ -27,15 +33,30 @@ class Pedido {
     required this.status,
     required this.data,
     this.impresso = false,
-    required this.endereco,
+    this.endereco,
     required this.formaPagamento,
     this.valorAjustado = false,
+    this.frete = 4.0,
+    required this.tipoEntrega,
+    this.dataEntrega,
+    this.horaEntrega,
+
 
   });
 
-  double get total => itens.fold(0.0, (sum, item) => sum + item.subtotal);
+  double get subtotal => itens.fold(0.0, (sum, item) => sum + item.subtotal);
 
-  double get totalCalculado => itens.fold(0.0, (sum, item) => sum + item.subtotal);
+  double get totalComFrete => subtotal + frete;
+
+  DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+  }
 
   factory Pedido.fromMap(Map<String, dynamic> map, String id) {
     return Pedido(
@@ -55,9 +76,17 @@ class Pedido {
           ? (map['data'] as Timestamp).toDate()
           : DateTime.now(),
       impresso: map['impresso'] ?? false,
-      endereco: map['endereco'] ?? 'Sem endereço',
+      endereco: map['endereco'],
       formaPagamento: List<String>.from(map['formaPagamento'] ?? ['Pix']),
       valorAjustado: map['valorAjustado'] ?? false,
+      frete: (map['frete'] != null) ? (map['frete'] as num).toDouble() : 4.0, // 🔹 se não tiver salvo, assume 4.0
+      tipoEntrega: map['tipoEntrega'] ?? 'entrega',
+      dataEntrega: map['dataEntrega'] != null
+          ? (map['dataEntrega'] as Timestamp).toDate()
+          : null,
+      horaEntrega: map['horaEntrega'] != null
+          ? (map['horaEntrega'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -68,7 +97,9 @@ class Pedido {
       'nomeUsuario': nomeUsuario,
       'telefone': telefone,
       'itens': itens.map((item) => item.toMap()).toList(),
-      'total': total,
+      'subtotal': subtotal,
+      'frete': frete,
+      'totalComFrete': totalComFrete,
       'totalFinal': totalFinal,
       'status': status,
       'data': Timestamp.fromDate(data),
@@ -76,6 +107,10 @@ class Pedido {
       'endereco': endereco,
       'formaPagamento': formaPagamento,
       'valorAjustado': valorAjustado,
+      'tipoEntrega': tipoEntrega,
+      'dataEntrega': dataEntrega != null ? Timestamp.fromDate(dataEntrega!) : null,
+      'horaEntrega': horaEntrega != null ? Timestamp.fromDate(horaEntrega!) : null,
     };
+
   }
 }

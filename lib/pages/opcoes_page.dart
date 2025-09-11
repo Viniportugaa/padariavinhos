@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:flutter/services.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -116,17 +117,13 @@ class _OpcoesPageState extends State<OpcoesPage> {
 
       Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("A conta e todos os dados foram excluídos com sucesso!")),
-      );
+      DialogHelper.showTemporaryToast(context, "A conta e todos os dados foram excluídos com sucesso!");
 
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       Navigator.pop(context); // fecha loading
       print("Erro ao excluir conta: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erro: ${e.toString()}")),
-      );
+      DialogHelper.showTemporaryToast(context,  "Erro: ${e.toString()}");
     }
   }
 
@@ -164,9 +161,8 @@ class _OpcoesPageState extends State<OpcoesPage> {
                 Navigator.pop(context);
                 deleteAccountWithPassword(senha);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Digite a senha para continuar")),
-                );
+                 DialogHelper.showTemporaryToast(context, "Digite a senha para continuar");
+
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.white),
@@ -194,13 +190,9 @@ class _OpcoesPageState extends State<OpcoesPage> {
             ? ramalApartamentoController.text.trim()
             : null,
       }, SetOptions(merge: true));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dados atualizados com sucesso!')),
-      );
+       DialogHelper.showTemporaryToast(context, 'Dados atualizados com sucesso!');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao atualizar dados: $e')),
-      );
+         DialogHelper.showTemporaryToast(context, 'Erro ao atualizar dados: $e');
     }
   }
 

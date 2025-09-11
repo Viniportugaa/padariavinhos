@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/notifiers/config_notifier.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class ConfigAberturaPage extends StatefulWidget {
   const ConfigAberturaPage({super.key});
@@ -43,9 +44,8 @@ class _ConfigAberturaPageState extends State<ConfigAberturaPage> {
       }
     } catch (e) {
       debugPrint('Erro ao carregar configuração: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao carregar configuração')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Erro ao carregar configuração');
+
     }
   }
 
@@ -75,14 +75,11 @@ class _ConfigAberturaPageState extends State<ConfigAberturaPage> {
       final configNotifier = Provider.of<ConfigNotifier>(context, listen: false);
       configNotifier.updateAbertura(_aberto, _horaAbertura, _horaFechamento);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configuração salva com sucesso!')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Configuração salva com sucesso!');
+
     } catch (e) {
       debugPrint('Erro ao salvar configuração: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao salvar configuração')),
-      );
+      DialogHelper.showTemporaryToast(context,  'Erro ao salvar configuração');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

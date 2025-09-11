@@ -2,186 +2,431 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/services/pedido_provider.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/models/pedido.dart';
+import 'package:padariavinhos/models/user.dart';
 
-class PedidoCard extends StatelessWidget {
-  const PedidoCard({super.key});
+class PedidoCard extends StatefulWidget {
+  final Pedido pedido;
+  final User? usuario;
 
-  Color _getCorDeFundo(pedido) {
-    if (pedido.impresso && pedido.status == 'finalizado') return Colors.green.shade100;
-    if (pedido.impresso && pedido.status == 'em preparo') return Colors.blue.shade100;
-    if (!pedido.impresso && pedido.status == 'pendente') return Colors.yellow.shade100;
-    return Colors.grey.shade200;
+  const PedidoCard({super.key, required this.pedido, this.usuario});
+
+  @override
+  State<PedidoCard> createState() => _PedidoCardState();
+}
+
+class _PedidoCardState extends State<PedidoCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(_fadeAnimation);
+
+    _controller.forward();
   }
 
-  Color _getCorBorda(pedido) {
-    if (pedido.impresso && pedido.status == 'finalizado') return Colors.green;
-    if (pedido.impresso && pedido.status == 'em preparo') return Colors.blue;
-    if (!pedido.impresso && pedido.status == 'pendente') return Colors.orange;
-    return Colors.grey;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Color _cardColor(String status, bool impresso) {
+    if (status == 'cancelado') return Colors.red.shade50;
+    if (impresso && status == 'finalizado') return Colors.green.shade50;
+    if (impresso && status == 'em preparo') return Colors.blue.shade50;
+    if (!impresso && status == 'pendente') return Colors.yellow.shade50;
+    return Colors.grey.shade100;
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'pendente':
+        return Colors.amber;
+      case 'em preparo':
+        return Colors.blue;
+      case 'finalizado':
+        return Colors.green;
+      case 'cancelado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PedidoProvider>(
-      builder: (context, provider, _) {
-        final pedido = provider.pedido;
-        if (pedido == null) return const SizedBox.shrink();
+    final pedido = widget.pedido;
+    final usuario = widget.usuario;
+    final endereco = usuario != null
+        ? "${usuario.endereco}, Nº ${usuario.numeroEndereco}${usuario.tipoResidencia == 'apartamento' && usuario.ramalApartamento != null ? ', Ap. ${usuario.ramalApartamento}' : ''} - CEP: ${usuario.cep}"
+        : '';
 
-        final usuario = provider.usuario;
-        final endereco = usuario != null
-            ? "${usuario.endereco}, Nº ${usuario.numeroEndereco}${usuario.tipoResidencia == 'apartamento' && usuario.ramalApartamento != null ? ', Ap. ${usuario.ramalApartamento}' : ''} - CEP: ${usuario.cep}"
-            : '';
-
-        return Card(
-          elevation: 4,
-          color: _getCorDeFundo(pedido),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: _getCorBorda(pedido), width: 2),
-          ),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: ListTile(
-            title: Text('Pedido ${pedido.numeroPedido}'),
-            subtitle: Column(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 4,
+          color: _cardColor(pedido.status, pedido.impresso),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Cliente: ${usuario?.nome ?? pedido.nomeUsuario}'),
-                if (endereco.isNotEmpty) Text('Endereço: $endereco'),
-                Text('Data: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.data)}'),
-                Text('Status: ${pedido.status}'),
+                // Cabeçalho
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pedido #${pedido.numeroPedido}',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _statusColor(pedido.status),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        pedido.status.toUpperCase(),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text('Cliente: ${usuario?.nome ?? pedido.nomeUsuario}',
+                    style: const TextStyle(fontSize: 14)),
+                if (endereco.isNotEmpty)
+                  Text('Endereço: $endereco',
+                      style:
+                      const TextStyle(fontSize: 14, color: Colors.black54)),
+                Text(
+                    'Data: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.data)}',
+                    style:
+                    const TextStyle(fontSize: 12, color: Colors.black54)),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        _mostrarDetalhesPedido(context, pedido, usuario),
+                    icon: const Icon(Icons.receipt_long),
+                    label: const Text('Ver Detalhes'),
+                  ),
+                ),
               ],
             ),
-            trailing: Text('R\$ ${pedido.total.toStringAsFixed(2)}'),
-            onTap: () => _mostrarDetalhesPedido(context, provider),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  void _mostrarDetalhesPedido(BuildContext context, PedidoProvider provider) {
-    final pedido = provider.pedido;
-    if (pedido == null) return;
-
+  void _mostrarDetalhesPedido(BuildContext context, Pedido pedido, User? usuario) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Pedido #${pedido.numeroPedido}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text("Cliente: ${provider.usuario?.nome ?? 'Carregando...'}", style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                "Status: ${pedido.status}",
-                style: TextStyle(
-                  color: pedido.status == 'pendente'
-                      ? Colors.orange
-                      : pedido.status == 'em preparo'
-                      ? Colors.blue
-                      : Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Divider(),
-              ...pedido.itens.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                final isVendidoPorPeso = item.produto.vendidoPorPeso;
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return Consumer<PedidoProvider>(
+            builder: (context, provider, _) {
+              final endereco = usuario != null
+                  ? "${usuario.endereco}, Nº ${usuario.numeroEndereco}${usuario.tipoResidencia == 'apartamento' && usuario.ramalApartamento != null ? ', Ap. ${usuario.ramalApartamento}' : ''} - CEP: ${usuario.cep}"
+                  : '';
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  controller: scrollController,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.produto.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Center(
+                        child: Container(
+                          width: 50,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text("Pedido #${pedido.numeroPedido}",
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text(
+                          "Cliente: ${usuario?.nome ?? pedido.nomeUsuario} (${usuario?.telefone ?? ''})",
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      if (endereco.isNotEmpty)
+                        Text("Endereço: $endereco",
+                            style: const TextStyle(fontSize: 14)),
+                      Chip(
+                        label: Text(pedido.status.toUpperCase()),
+                        backgroundColor: _statusColor(pedido.status),
+                        labelStyle: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      const Divider(thickness: 1.2, height: 24),
 
-                      if (isVendidoPorPeso)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                initialValue: item.quantidade.toString(),
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                decoration: const InputDecoration(labelText: 'Quantidade (kg)'),
-                                enabled: pedido.status == 'pendente',
-                                onChanged: (val) {
-                                  final kg = double.tryParse(val.replaceAll(',', '.')) ?? 0;
-                                  if (pedido.status != 'pendente') return;
+                      // Itens do pedido
+                      ...pedido.itens.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final item = entry.value;
+                        final isVendidoPorPeso = item.produto.vendidoPorPeso;
 
-                                  // Atualiza no Firestore via provider usando índice
-                                  provider.atualizarItemPedidoPorIndice(index: index, quantidade: kg);
+                        return Card(
+                          color: Colors.grey.shade50,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.produto.nome,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                                const SizedBox(height: 4),
 
-                                  // Atualiza localmente no carrinho
-                                  final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
-                                  item.quantidade = kg;
-                                  carrinho.atualizarItem(item);
-                                },
-                              ),
+                                // Quantidade editável se vendido por peso
+                                if (isVendidoPorPeso)
+                                  TextFormField(
+                                    initialValue: item.quantidade.toString(),
+                                    keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Quantidade (kg)',
+                                    ),
+                                    enabled: pedido.status == 'pendente',
+                                    onChanged: (val) {
+                                      final kg = double.tryParse(
+                                          val.replaceAll(',', '.')) ??
+                                          0;
+                                      if (pedido.status != 'pendente') return;
+
+                                      provider.atualizarItemPedidoPorIndice(
+                                        pedido: pedido,
+                                        index: index,
+                                        quantidade: kg,
+                                      );
+
+                                      item.quantidade = kg;
+                                    },
+                                  ),
+
+                                if (!isVendidoPorPeso)
+                                  Text(
+                                      'Quantidade: ${item.quantidade % 1 == 0 ? item.quantidade.toInt() : item.quantidade}'),
+
+                                Text(
+                                    "Preço Unitário: R\$ ${item.produto.preco.toStringAsFixed(2)}"),
+                                if (item.acompanhamentos != null &&
+                                    item.acompanhamentos!.isNotEmpty)
+                                  Text(
+                                      "Acompanhamentos: ${item.acompanhamentos!.map((a) => a.nome).join(', ')}"),
+                                if (item.observacao?.isNotEmpty ?? false)
+                                  Text("Obs: ${item.observacao}"),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Subtotal: R\$ ${item.subtotal.toStringAsFixed(2)}",
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            // Valor por kg (Alterar se precisar)
-                            // Expanded(
-                            //   child: TextFormField(
-                            //     initialValue: (item.valorFinal ?? item.produto.preco).toStringAsFixed(2),
-                            //     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            //     decoration: const InputDecoration(labelText: 'Valor/kg'),
-                            //     enabled: pedido.status == 'pendente',
-                            //     onChanged: (val) {
-                            //       final v = double.tryParse(val.replaceAll(',', '.')) ?? item.produto.preco;
-                            //
-                            //       // Atualiza o item no carrinho
-                            //       final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
-                            //       item.valorFinal = v;
-                            //       carrinho.atualizarItem(item);
-                            //     },
-                            //   ),
-                            // ),
+                          ),
+                        );
+                      }).toList(),
+
+                      const Divider(thickness: 1.2, height: 24),
+                      _buildTotalRow("Total", provider.totalComFrete(pedido), true),
+                      const SizedBox(height: 8),
+
+                      // Forma de pagamento
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Método de Pagamento",
+                                style: TextStyle(fontSize: 16)),
+                            Text(
+                              pedido.formaPagamento.isNotEmpty
+                                  ? pedido.formaPagamento.first
+                                  : "-",
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
                           ],
                         ),
-
-                      if (!isVendidoPorPeso)
-                        Text('Quantidade: ${item.quantidade % 1 == 0 ? item.quantidade.toInt() : item.quantidade}'),
-
-                      // Subtotal
-                      Consumer<CarrinhoProvider>(
-                        builder: (_, carrinho, __) {
-                          final subtotal = isVendidoPorPeso
-                              ? ((item.valorFinal ?? item.produto.preco) * item.quantidade)
-                              : item.subtotal;
-                          return Text('Subtotal: R\$ ${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold));
-                        },
                       ),
 
-                      const Divider(),
+                      const SizedBox(height: 12),
+
+                      // Botões de ação
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            // Marcar como visto
+                            if (!pedido.impresso && pedido.status == 'pendente')
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  await provider.editar(pedido);
+                                  setState(() {});
+                                },
+                                icon: const Icon(Icons.visibility),
+                                label: const Text("Marcar como visto"),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange),
+                              ),
+
+                            // Imprimir pedido
+                            if (!pedido.impresso && pedido.status == 'em preparo')
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (usuario == null) return;
+                                  await provider.imprimir(
+                                      pedido, usuario, context);
+                                  setState(() {});
+                                },
+                                icon: const Icon(Icons.print),
+                                label: const Text("Imprimir"),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue),
+                              ),
+
+                            // Finalizar pedido
+                            if (pedido.status == 'em preparo')
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (!pedido.impresso) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Imprima antes de finalizar')));
+                                    return;
+                                  }
+                                  await provider.finalizar(pedido);
+                                  setState(() {});
+                                },
+                                icon: const Icon(Icons.check),
+                                label: const Text("Finalizar"),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green),
+                              ),
+
+                            // Cancelar pedido
+                            if (pedido.status == 'pendente' ||
+                                pedido.status == 'em preparo')
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final confirmar = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text("Cancelar Pedido"),
+                                      content: const Text(
+                                          "Tem certeza que deseja cancelar este pedido?"),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text("Não"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text("Sim"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirmar ?? false) {
+                                    await provider.cancelarPedido(pedido);
+                                    setState(() {});
+                                  }
+                                },
+                                icon: const Icon(Icons.cancel),
+                                label: const Text("Cancelar"),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                );
-              }),
-              const Divider(),
-              Wrap(
-                spacing: 12,
-                children: [
-                  if (pedido.status == 'pendente')
-                    ElevatedButton(onPressed: provider.editar, child: const Text('Marcar como Visto')),
-                  if (pedido.status == 'em preparo')
-                    ElevatedButton(onPressed: () => provider.imprimir(context), child: const Text('Imprimir')),
-                  if (pedido.status == 'em preparo')
-                    ElevatedButton(onPressed: provider.finalizar, child: const Text('Finalizar Pedido')),
-                ],
-              ),
-            ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, double value, bool destaque) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: destaque ? 18 : 16,
+                  fontWeight: destaque ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            "R\$ ${value.toStringAsFixed(2)}",
+            style: TextStyle(
+                fontSize: destaque ? 18 : 16,
+                fontWeight: destaque ? FontWeight.bold : FontWeight.normal,
+                color: destaque ? Colors.green : Colors.black),
           ),
-        ),
+        ],
       ),
     );
   }

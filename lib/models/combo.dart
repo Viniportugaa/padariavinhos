@@ -1,4 +1,3 @@
-import 'produto.dart';
 
 class Combo {
   final String id;

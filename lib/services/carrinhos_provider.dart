@@ -1,77 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:padariavinhos/models/acompanhamento.dart';
-import '../models/produto.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
+import '../models/produto.dart';
+import '../models/acompanhamento.dart';
 
 class CarrinhoProvider extends ChangeNotifier {
   final List<ItemCarrinho> _itens = [];
 
   List<ItemCarrinho> get itens => List.unmodifiable(_itens);
 
-  double get total {
-    return _itens.fold(0.0, (soma, item) => soma + item.subtotal);
-  }
+  double get total =>
+      _itens.fold(0.0, (soma, item) => soma + item.subtotal);
 
-  void atualizarItem(ItemCarrinho item) {
-    final index = _itens.indexWhere((i) => i.idUnico == item.idUnico);
-    if (index >= 0) {
-      _itens[index] = item;
-      notifyListeners();
-    }
-  }
-
+  // ================== ADICIONAR PRODUTO ==================
   void adicionarProduto(
       Produto produto,
       double quantidade, {
         String? observacao,
         List<Acompanhamento>? acompanhamentos,
-        bool isCombo = false,
-        double? precoCombo,
-        double? precoEstimado,
+        Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
       }) {
     final indexExistente = _itens.indexWhere((item) =>
     item.produto.id == produto.id &&
         item.observacao == observacao &&
-        item.isCombo == isCombo &&
-        item.precoCombo == precoCombo &&
-        _mesmosAcompanhamentos(item.acompanhamentos, acompanhamentos));
-
-    final precoBase = isCombo ? (precoCombo ?? 0.0) : produto.preco;
-    final precoFinal = precoEstimado ?? precoBase;
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
+        _acompanhamentosPorProdutoIguais(
+            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
 
     if (indexExistente >= 0) {
       _itens[indexExistente].quantidade += quantidade;
     } else {
-      _itens.add(ItemCarrinho(
+      final novoItem = ItemCarrinho(
         produto: produto,
         quantidade: quantidade,
         observacao: observacao,
-        acompanhamentos: acompanhamentos,
-        isCombo: isCombo,
-        precoCombo: precoCombo,
-        precoEstimado: precoFinal,
-        totalEstimado: precoFinal * quantidade,
-      ));
+        acompanhamentos: acompanhamentos ?? [],
+        acompanhamentosPorProduto: acompanhamentosPorProduto,
+        precoEstimado: produto.preco,
+        totalEstimado: produto.preco * quantidade,
+      );
+      _itens.add(novoItem);
     }
+
     notifyListeners();
   }
 
-  void aumentarQuantidadePorIndice(int index) {
-    _itens[index].quantidade++;
-    _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
-    notifyListeners();
-  }
-
-  void diminuirQuantidadePorIndice(int index) {
-    if (_itens[index].quantidade > 1) {
-      _itens[index].quantidade--;
-      _itens[index].totalEstimado = _itens[index].precoEstimado * _itens[index].quantidade;
-    } else {
-      _itens.removeAt(index);
+  // ================== QUANTIDADE ==================
+  void aumentarQuantidade(int index) {
+    if (index >= 0 && index < _itens.length) {
+      _itens[index].quantidade++;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
+  void diminuirQuantidade(int index) {
+    if (index >= 0 && index < _itens.length) {
+      if (_itens[index].quantidade > 1) {
+        _itens[index].quantidade--;
+      } else {
+        _itens.removeAt(index);
+      }
+      notifyListeners();
+    }
+  }
+
+  // ================== REMOVER ==================
   void removerPorIndice(int index) {
     if (index >= 0 && index < _itens.length) {
       _itens.removeAt(index);
@@ -79,155 +71,105 @@ class CarrinhoProvider extends ChangeNotifier {
     }
   }
 
-  void atualizarObservacaoPorIndice(int index, String observacao) {
+  void removerPorProdutoId({
+    required String produtoId,
+    String? observacao,
+    List<Acompanhamento>? acompanhamentos,
+    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
+  }) {
+    final index = _itens.indexWhere((item) =>
+    item.produto.id == produtoId &&
+        item.observacao == observacao &&
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
+        _acompanhamentosPorProdutoIguais(
+            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
+    if (index >= 0) {
+      removerPorIndice(index);
+    }
+  }
+
+  // ================== ATUALIZAR ==================
+  void atualizarObservacao(int index, String observacao) {
     if (index >= 0 && index < _itens.length) {
       _itens[index].observacao = observacao;
       notifyListeners();
     }
   }
 
-  int _buscarIndicePorProduto({
+  void atualizarObservacaoPorProdutoId({
     required String produtoId,
-    String? observacao,
-    bool isCombo = false,
-    double? precoCombo,
+    required String observacao,
+    String? observacaoAntiga,
     List<Acompanhamento>? acompanhamentos,
+    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
   }) {
-    return _itens.indexWhere((item) =>
+    final index = _itens.indexWhere((item) =>
     item.produto.id == produtoId &&
-        item.observacao == observacao &&
-        item.isCombo == isCombo &&
-        item.precoCombo == precoCombo &&
-        _mesmosAcompanhamentos(item.acompanhamentos, acompanhamentos));
-  }
-
-  /// Aumenta a quantidade do item pelo produtoId e opções
-  void aumentarQuantidade({
-    required String produtoId,
-    String? observacao,
-    bool isCombo = false,
-    double? precoCombo,
-    List<Acompanhamento>? acompanhamentos,
-  }) {
-    final index = _buscarIndicePorProduto(
-      produtoId: produtoId,
-      observacao: observacao,
-      isCombo: isCombo,
-      precoCombo: precoCombo,
-      acompanhamentos: acompanhamentos,
-    );
+        item.observacao == observacaoAntiga &&
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
+        _acompanhamentosPorProdutoIguais(
+            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
     if (index >= 0) {
-      aumentarQuantidadePorIndice(index);
+      atualizarObservacao(index, observacao);
     }
   }
 
-  /// Diminui a quantidade do item pelo produtoId e opções
-  void diminuirQuantidade({
-    required String produtoId,
-    String? observacao,
-    bool isCombo = false,
-    double? precoCombo,
-    List<Acompanhamento>? acompanhamentos,
-  }) {
-    final index = _buscarIndicePorProduto(
-      produtoId: produtoId,
-      observacao: observacao,
-      isCombo: isCombo,
-      precoCombo: precoCombo,
-      acompanhamentos: acompanhamentos,
-    );
-    if (index >= 0) {
-      diminuirQuantidadePorIndice(index);
-    }
-  }
-
-  /// Atualiza os acompanhamentos do item pelo índice
-  void atualizarAcompanhamentosPorIndice(int index, List<Acompanhamento> acompanhamentos) {
+  void atualizarAcompanhamentos(
+      int index, List<Acompanhamento> acompanhamentos) {
     if (index >= 0 && index < _itens.length) {
       _itens[index].acompanhamentos = List.from(acompanhamentos);
       notifyListeners();
     }
   }
 
-  /// Atualiza os acompanhamentos do item pelo produtoId e opções
   void atualizarAcompanhamentosPorProdutoId({
     required String produtoId,
     List<Acompanhamento>? acompanhamentos,
+    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
     String? observacao,
-    bool isCombo = false,
-    double? precoCombo,
   }) {
-    final index = _buscarIndicePorProduto(
-      produtoId: produtoId,
-      observacao: observacao,
-      isCombo: isCombo,
-      precoCombo: precoCombo,
-      acompanhamentos: null, // não considerar a lista antiga para localizar o item
-    );
+    final index = _itens.indexWhere((item) =>
+    item.produto.id == produtoId &&
+        item.observacao == observacao &&
+        _acompanhamentosPorProdutoIguais(
+            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
     if (index >= 0 && acompanhamentos != null) {
-      atualizarAcompanhamentosPorIndice(index, acompanhamentos);
+      atualizarAcompanhamentos(index, acompanhamentos);
     }
   }
 
+  // ================== UTILITÁRIOS ==================
+  bool _acompanhamentosIguais(
+      List<Acompanhamento>? a, List<Acompanhamento>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
 
-  /// Remove item do carrinho pelo produtoId e opções
-  void removerPorProdutoId({
-    required String produtoId,
-    String? observacao,
-    bool isCombo = false,
-    double? precoCombo,
-    List<Acompanhamento>? acompanhamentos,
-  }) {
-    final index = _buscarIndicePorProduto(
-      produtoId: produtoId,
-      observacao: observacao,
-      isCombo: isCombo,
-      precoCombo: precoCombo,
-      acompanhamentos: acompanhamentos,
-    );
-    if (index >= 0) {
-      removerPorIndice(index);
-    }
-  }
+    final sortedA = a.map((e) => e.id).toList()..sort();
+    final sortedB = b.map((e) => e.id).toList()..sort();
 
-  /// Atualiza a observação do item pelo produtoId e opções
-  void atualizarObservacaoPorProdutoId({
-    required String produtoId,
-    String observacao = '',
-    String? observacaoAntiga,
-    bool isCombo = false,
-    double? precoCombo,
-    List<Acompanhamento>? acompanhamentos,
-  }) {
-    final index = _buscarIndicePorProduto(
-      produtoId: produtoId,
-      observacao: observacaoAntiga,
-      isCombo: isCombo,
-      precoCombo: precoCombo,
-      acompanhamentos: acompanhamentos,
-    );
-    if (index >= 0) {
-      atualizarObservacaoPorIndice(index, observacao);
-    }
-  }
-
-  /// Compara se duas listas de acompanhamentos são iguais, ignorando ordem
-  bool _mesmosAcompanhamentos(
-      List<Acompanhamento>? lista1, List<Acompanhamento>? lista2) {
-    if (lista1 == null && lista2 == null) return true;
-    if (lista1 == null || lista2 == null) return false;
-    if (lista1.length != lista2.length) return false;
-
-    final ids1 = lista1.map((a) => a.id ?? a.nome).toList()..sort();
-    final ids2 = lista2.map((a) => a.id ?? a.nome).toList()..sort();
-
-    for (int i = 0; i < ids1.length; i++) {
-      if (ids1[i] != ids2[i]) return false;
+    for (int i = 0; i < sortedA.length; i++) {
+      if (sortedA[i] != sortedB[i]) return false;
     }
     return true;
   }
 
-  /// Limpa o carrinho
+  bool _acompanhamentosPorProdutoIguais(
+      Map<String, List<Acompanhamento>>? a,
+      Map<String, List<Acompanhamento>>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+
+    for (var key in a.keys) {
+      final listaA = a[key];
+      final listaB = b[key];
+      if (!_acompanhamentosIguais(listaA, listaB)) return false;
+    }
+
+    return true;
+  }
+
   void limpar() {
     _itens.clear();
     notifyListeners();

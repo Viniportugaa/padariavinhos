@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padariavinhos/services/cep_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
+import 'package:padariavinhos/services/notification_service.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -62,22 +64,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> saveFcmToken(String uid) async {
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    if (fcmToken != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final role = userDoc.data()?['role'] ?? 'cliente';
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('tokens')
-          .doc(fcmToken)
-          .set({
-        'created_at': Timestamp.now(),
-        'last_used': Timestamp.now(),
-        'role': role,
-      });
-    }
+    await NotificationService.initFCM(uid);
   }
 
   Future<void> buscarEnderecoPorCep(String cep) async {
@@ -89,25 +76,28 @@ class _SignUpPageState extends State<SignUpPage> {
       enderecoController.text =
       "${endereco["logradouro"]}, ${endereco["bairro"]}, ${endereco["cidade"]} - ${endereco["estado"]}";
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("CEP inválido ou não encontrado.")),
-      );
+      DialogHelper.showTemporaryToast(context,  "CEP inválido ou não encontrado.");
     }
   }
 
   Future<void> createUserWithEmailAndPassword() async {
     if (!formKey.currentState!.validate()) return;
     if (!acceptedLGPD) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aceite a política de privacidade (LGPD).')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Aceite a política de privacidade (LGPD).');
       return;
     }
 
     setState(() => isLoading = true);
+    final endereco = await CepService.buscarEndereco(cepController.text.trim());
+    if (endereco == null) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CEP inválido ou não encontrado.')),
+      );
+      return; // 🔹 Impede criação de usuário
+    }
 
     try {
-      // 1️⃣ Cria usuário no Firebase Auth
       final userCredential =
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
@@ -115,26 +105,33 @@ class _SignUpPageState extends State<SignUpPage> {
       );
       final uid = userCredential.user!.uid;
 
-      // 2️⃣ Salva dados no Firestore
       await saveUserData(uid);
 
-      // 3️⃣ Salva FCM Token
-      await saveFcmToken(uid);
+      await NotificationService.initFCM(uid);
 
       setState(() => isLoading = false);
 
-      // 4️⃣ Feedback e redirecionamento
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cadastro realizado com sucesso!')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Cadastro realizado com sucesso!');
+
       context.push('/signin');
 
     } catch (e) {
       setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao criar usuário: $e')),
-      );
+       DialogHelper.showTemporaryToast(context, 'Erro ao criar usuário: $e');
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Sempre que o usuário digitar no CEP, escutamos
+    cepController.addListener(() {
+      final cep = cepController.text.trim();
+      if (cep.length == 8 && !isLoadingCep) {
+        buscarEnderecoPorCep(cep); // já preenche o endereço
+      }
+    });
   }
 
   @override
@@ -184,11 +181,28 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    suffixIcon: _buildBotaoCep(),
+                    suffixIcon: isLoadingCep
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                        : null,
                   ),
-                  validator: (value) =>
-                  (value == null || value.length != 8) ? 'CEP inválido' : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Campo obrigatório';
+                    }
+                    if (value.length != 8) {
+                      return 'CEP deve ter 8 números';
+                    }
+                    if (enderecoController.text.isEmpty) {
+                      return 'Valide o CEP antes de continuar';
+                    }
+                    return null;
+                  },
                 ),
+
                 const SizedBox(height: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,10 +239,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 _buildInputField(controller: enderecoController, hint: 'Endereço'),
                 const SizedBox(height: 15),
                 _buildInputField(
-                    controller: telefoneController,
-                    hint: 'Telefone',
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [PhoneInputFormatter()]),
+                  controller: telefoneController,
+                  hint: 'Telefone',
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    MaskedInputFormatter('(##) #####-####'), // máscara dinâmica
+                  ],
+                  requiredField: true,
+                ),
                 const SizedBox(height: 15),
                 _buildInputField(controller: emailController, hint: 'Email'),
                 const SizedBox(height: 15),
@@ -320,9 +338,7 @@ class _SignUpPageState extends State<SignUpPage> {
         if (cepController.text.trim().length == 8) {
           buscarEnderecoPorCep(cepController.text.trim());
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Digite um CEP válido (8 números)")),
-          );
+           DialogHelper.showTemporaryToast(context, "Digite um CEP válido (8 números)");
         }
       },
     );

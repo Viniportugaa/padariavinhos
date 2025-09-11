@@ -1,11 +1,8 @@
 import 'package:padariavinhos/models/acompanhamento.dart';
-import 'combo.dart';
 import 'produto.dart';
-import 'package:padariavinhos/models/acompanhamento.dart';
 
 class ItemCarrinho {
   final Produto produto;
-  final Combo? combo;
   double quantidade;
   double precoEstimado;
   double totalEstimado;
@@ -13,9 +10,6 @@ class ItemCarrinho {
   String? observacao;
   List<Acompanhamento>? acompanhamentos;
 
-  bool isCombo;
-  double? precoCombo;
-  List<Produto>? produtosDoCombo;
 
   Map<String, List<Acompanhamento>>? acompanhamentosPorProduto;
 
@@ -24,32 +18,27 @@ class ItemCarrinho {
   ItemCarrinho({
     required this.produto,
     this.quantidade = 1,
-    this.combo,
     this.observacao,
     this.acompanhamentos = const [],
     required this.precoEstimado,
     required this.totalEstimado,
     this.valorFinal,
-    this.isCombo = false,
-    this.precoCombo,
-    this.produtosDoCombo,
     this.acompanhamentosPorProduto,
-  });
+  }) {
+    idUnico = gerarIdUnico();
+  }
 
   double get subtotal {
-    if (produto.vendidoPorPeso) {
-      final valor = valorFinal ?? produto.preco;
-      return valor * quantidade;
+    final valorProduto = valorFinal ?? precoEstimado;
+
+    double valorAcomp = 0.0;
+    if (produto.category == 'Pratos') {
+      valorAcomp = valorAcompanhamentosPratos;
+    } else if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
+      valorAcomp = acompanhamentos!.fold(0.0, (soma, a) => soma + a.preco);
     }
 
-    final precoBase = isCombo ? (precoCombo ?? 0.0) : produto.preco;
-    final precoAcomp = (!isCombo)
-        ? (produto.category == 'Pratos'
-        ? valorAcompanhamentosPratos
-        : (acompanhamentos?.fold<double>(0.0, (soma, a) => soma + a.preco) ?? 0.0))
-        : 0.0;
-
-    return (precoBase + precoAcomp) * quantidade;
+    return (valorProduto + valorAcomp) * quantidade;
   }
 
   double get valorAcompanhamentosPratos {
@@ -63,8 +52,8 @@ class ItemCarrinho {
 
     // Se houver mais de 3, cada extra adiciona o menor valor
     final sortedPrecos = acompanhamentos!.map((a) => a.preco).toList()..sort();
-    final extras = acompanhamentos!.length - 3;
-    return extras * sortedPrecos.first; // sortedPrecos.first não é nulo
+    final extras = sortedPrecos.skip(3).toList();
+    return extras.fold(0.0, (soma, preco) => soma + preco);
   }
 
   factory ItemCarrinho.fromMap(Map<String, dynamic> map) {
@@ -76,16 +65,9 @@ class ItemCarrinho {
           .map((acompMap) => Acompanhamento.fromMap(acompMap, acompMap['id'] ?? ''))
           .toList()
           : [],
-      isCombo: map['isCombo'] ?? false,
       precoEstimado: (map['precoEstimado'] ?? 0).toDouble(),
       totalEstimado: (map['totalEstimado'] ?? 0).toDouble(),
       valorFinal: map['valorFinal'] != null ? (map['valorFinal'] as num).toDouble() : null,
-      precoCombo: map['precoCombo'] != null ? (map['precoCombo'] as num).toDouble() : null,
-      produtosDoCombo: map['itensCombo'] != null
-          ? List<Map<String, dynamic>>.from(map['itensCombo'])
-          .map((pMap) => Produto.fromMap(pMap, pMap['id']))
-          .toList()
-          : null,
       acompanhamentosPorProduto: map['acompanhamentosPorProduto'] != null
           ? (map['acompanhamentosPorProduto'] as Map<String, dynamic>).map(
             (key, value) => MapEntry(
@@ -102,7 +84,7 @@ class ItemCarrinho {
 
   Map<String, dynamic> toMap() {
     return {
-      'produto': produto.toMap(), // salvar produto inteiro
+      'produto': produto.toMap(),
       'produtoId': produto.id,
       'nome': produto.nome,
       'quantidade': quantidade,
@@ -114,11 +96,6 @@ class ItemCarrinho {
       'acompanhamentos': acompanhamentos != null
           ? acompanhamentos!.map((a) => a.toMap()).toList()
           : [],
-      'isCombo': isCombo,
-      'precoCombo': precoCombo,
-      'itensCombo': produtosDoCombo != null
-          ? produtosDoCombo!.map((p) => p.toMap()).toList()
-          : [],
       'acompanhamentosPorProduto': acompanhamentosPorProduto != null
           ? acompanhamentosPorProduto!.map(
             (produtoId, lista) =>
@@ -128,7 +105,7 @@ class ItemCarrinho {
     };
   }
 
-  String _gerarIdUnico() {
+  String gerarIdUnico() {
     if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
       final acompIds = acompanhamentos!.map((a) => a.id).toList()..sort();
       return '${produto.id}-${acompIds.join('-')}';
@@ -181,8 +158,6 @@ class ItemCarrinho {
 
     return produto.id == other.produto.id &&
         observacao == other.observacao &&
-        isCombo == other.isCombo &&
-        precoCombo == other.precoCombo &&
         _acompanhamentosIguais(acompanhamentos, other.acompanhamentos) &&
         _acompanhamentosPorProdutoIguais(acompanhamentosPorProduto, other.acompanhamentosPorProduto);
   }
@@ -191,8 +166,5 @@ class ItemCarrinho {
   int get hashCode =>
       produto.id.hashCode ^
       (observacao?.hashCode ?? 0) ^
-      isCombo.hashCode ^
-      (precoCombo?.hashCode ?? 0) ^
-      (acompanhamentos?.fold<int>(0, (prev, a) => prev ^ (a.id?.hashCode ?? 0)) ?? 0)^
-      (produtosDoCombo?.fold<int>(0, (prev, p) => prev ^ (p.id?.hashCode ?? 0)) ?? 0);
+      (acompanhamentos?.fold<int>(0, (prev, a) => prev ^ (a.id?.hashCode ?? 0)) ?? 0);
 }

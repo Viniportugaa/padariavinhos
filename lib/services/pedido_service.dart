@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/models/user.dart';
-
+import 'package:padariavinhos/helpers/date_utils.dart';
+import 'package:flutter/material.dart';
 class PedidoService {
-  final CollectionReference _pedidosRef = FirebaseFirestore.instance.collection(
-      'pedidos');
-  final DocumentReference _contadorRef = FirebaseFirestore.instance.collection(
-      'contadores').doc('pedidoCounter');
+  final CollectionReference _pedidosRef = FirebaseFirestore.instance.collection('pedidos');
+  final DocumentReference _contadorRef = FirebaseFirestore.instance.collection('contadores').doc('pedidoCounter');
 
   Future<int> getNextNumeroPedido() async {
     return FirebaseFirestore.instance.runTransaction<int>((transaction) async {
@@ -36,7 +35,11 @@ class PedidoService {
   }
 
 
-  Future<void> criarPedido(Pedido pedido) async {
+  Future<void> criarPedido(
+      Pedido pedido, {
+        DateTime? dataEntrega,
+        TimeOfDay? horaEntrega,
+      }) async {
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(pedido.userId);
     final userSnapshot = await userRef.get();
@@ -63,11 +66,23 @@ class PedidoService {
         status: pedido.status,
         data: pedido.data,
         impresso: pedido.impresso,
-        endereco: user.enderecoFormatado,
+        endereco: pedido.endereco,
         formaPagamento:pedido.formaPagamento,
+        totalFinal: pedido.totalFinal ?? pedido.totalComFrete,
+        valorAjustado: pedido.valorAjustado,
+        frete: pedido.frete,
+        tipoEntrega: pedido.tipoEntrega,
+        dataEntrega: dataEntrega,
+        horaEntrega: combineDateAndTime(dataEntrega, horaEntrega),
       );
 
       transaction.set(docRef, pedidoComId.toMap());
+    });
+  }
+  Future<void> ajustarValorPedido(String pedidoId, double novoValor) async {
+    await _pedidosRef.doc(pedidoId).update({
+      'totalFinal': novoValor,
+      'valorAjustado': true,
     });
   }
 }

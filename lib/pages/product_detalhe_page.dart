@@ -4,6 +4,7 @@ import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/services/carrinhos_provider.dart';
 import 'package:padariavinhos/notifiers/products_notifier.dart';
 import 'package:provider/provider.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final String produtoId;
@@ -99,12 +100,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               if (_selecionados.length < 3) {
                                 _selecionados.add(acomp);
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Você só pode escolher até 3 acompanhamentos'),
-                                  ),
-                                );
+                                 DialogHelper.showTemporaryToast(context, 'Você só pode escolher até 3 acompanhamentos');
                               }
                             } else {
                               _selecionados.remove(acomp);
@@ -141,9 +137,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       acompanhamentos: _selecionados.isNotEmpty ? _selecionados : null,
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Produto adicionado ao carrinho!')),
-    );
+     DialogHelper.showTemporaryToast(context, 'Produto adicionado ao carrinho!');
     Navigator.pop(context);
   }
 }

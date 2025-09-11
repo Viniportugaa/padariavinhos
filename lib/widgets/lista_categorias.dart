@@ -67,7 +67,7 @@ class ListaCategorias extends StatelessWidget {
       case 'salgados': return Icons.add_circle_outline;
       case 'festividade': return Icons.celebration;
       case 'pratos': return Icons.restaurant;
-      default: return Icons.local_pizza;
+      default: return Icons.add_circle;
     }
   }
 }

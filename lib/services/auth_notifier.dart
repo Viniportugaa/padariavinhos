@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:padariavinhos/models/user.dart' as app_user;
 import 'package:firebase_messaging/firebase_messaging.dart';
+//import 'package:google_sign_in/google_sign_in.dart';
 
 
 class AuthNotifier extends ChangeNotifier {
@@ -28,6 +29,8 @@ class AuthNotifier extends ChangeNotifier {
   String? get role => _role;
 
   String? systemMessage;
+
+  String? _phoneVerificationId;
 
   Timer? _splashTimer;
 
@@ -87,7 +90,176 @@ class AuthNotifier extends ChangeNotifier {
     });
   }
 
-Future<void> _checkConnectivity() async {
+
+  Future<String?> registerWithEmail(String email, String password, String nome) async {
+    try {
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await cred.user?.sendEmailVerification();
+
+      // Cria documento no Firestore
+      await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+        'uid': cred.user!.uid,
+        'email': email,
+        'nome': nome,
+        'role': 'cliente',
+        'fcmToken': await FirebaseMessaging.instance.getToken(),
+        'emailVerified': cred.user!.emailVerified,
+      });
+
+      return null; // sucesso
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Erro inesperado: $e';
+    }
+  }
+
+  Future<String?> loginWithEmail(String email, String password) async {
+    try {
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (!cred.user!.emailVerified) {
+        await FirebaseAuth.instance.signOut();
+        return 'E-mail não verificado. Verifique sua caixa de entrada.';
+      }
+
+      await login(); // já carrega user + fcm token
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Erro inesperado: $e';
+    }
+  }
+
+  // Future<String?> loginWithGoogle() async {
+  //   try {
+  //     final googleUser = await GoogleSignIn().signIn();
+  //     if (googleUser == null) return 'Login cancelado pelo usuário.';
+  //
+  //     final googleAuth = await googleUser.authentication;
+  //
+  //     final credential = GoogleAuthProvider.credential(
+  //       accessToken: googleAuth.accessToken,
+  //       idToken: googleAuth.idToken,
+  //     );
+  //
+  //     final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+  //
+  //     // Cria/atualiza usuário no Firestore
+  //     final userDoc = FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid);
+  //     final snap = await userDoc.get();
+  //
+  //     if (!snap.exists) {
+  //       await userDoc.set({
+  //         'uid': userCred.user!.uid,
+  //         'email': userCred.user!.email,
+  //         'nome': userCred.user!.displayName ?? '',
+  //         'role': 'cliente',
+  //         'fcmToken': await FirebaseMessaging.instance.getToken(),
+  //         'emailVerified': true, // Google já vem verificado
+  //       });
+  //     } else {
+  //       await userDoc.update({
+  //         'fcmToken': await FirebaseMessaging.instance.getToken(),
+  //       });
+  //     }
+  //
+  //     await login();
+  //     return null;
+  //   } catch (e) {
+  //     return 'Erro no login com Google: $e';
+  //   }
+  // }
+
+  Future<String?> resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    }
+  }
+
+  // ✅ Verificação de email
+  Future<bool> checkEmailVerification() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        return user.emailVerified;
+      }
+    } catch (e) {
+      print("❌ Erro ao verificar email: $e");
+    }
+    return false;
+  }
+
+  // 📱 Inicia verificação por telefone
+  Future<void> startPhoneVerification(
+      String phoneNumber, {
+        required void Function(String verificationId) codeSent,
+        required void Function(String error) onError,
+      }) async {
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await FirebaseAuth.instance.signInWithCredential(credential);
+          await login();
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          print("❌ Erro na verificação de telefone: ${e.message}");
+          onError(e.message ?? "Erro desconhecido");
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _phoneVerificationId = verificationId;
+          print("📲 Código enviado para $phoneNumber");
+          codeSent(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _phoneVerificationId = verificationId;
+          print("⌛ Timeout para verificação: $verificationId");
+        },
+      );
+    } catch (e) {
+      print("❌ Erro no startPhoneVerification: $e");
+      onError(e.toString());
+    }
+  }
+
+  // 🔑 Confirma SMS
+  Future<bool> confirmPhoneCode(String smsCode) async {
+    try {
+      if (_phoneVerificationId == null) {
+        print("❌ Nenhuma verificação iniciada.");
+        return false;
+      }
+
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _phoneVerificationId!,
+        smsCode: smsCode,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      await login();
+      return true;
+    } catch (e) {
+      print("❌ Erro ao confirmar SMS: $e");
+      return false;
+    }
+  }
+
+
+  Future<void> _checkConnectivity() async {
   final results = await Connectivity().checkConnectivity();
     _isOnline = results.contains(ConnectivityResult.wifi) ||
         results.contains(ConnectivityResult.mobile) ||

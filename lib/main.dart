@@ -17,6 +17,7 @@ import 'services/auth_notifier.dart';
 import 'notifiers/config_notifier.dart';
 import 'router.dart';
 import 'package:padariavinhos/services/pedido_provider.dart';
+import 'package:padariavinhos/notifiers/favoritos_provider.dart';
 
 /// 🔹 Handler para notificações em background/terminated
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -72,7 +73,8 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CarrinhoProvider()),
         ChangeNotifierProvider(create: (_) => AuthNotifier()),
         ChangeNotifierProvider(create: (_) => ConfigNotifier()..startListening()),
-        ChangeNotifierProvider(create: (_) => PedidoProvider(pedidoId: ''),),
+        ChangeNotifierProvider(create: (_) => PedidoProvider()),
+        ChangeNotifierProvider(create: (_) => FavoritosProvider()),
       ],
       child: const MyApp(),
     ),

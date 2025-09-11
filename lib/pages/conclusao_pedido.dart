@@ -10,6 +10,12 @@ import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/notifiers/aberto_check.dart';
 import '../helpers/acompanhamentos_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:ui';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
+import 'package:padariavinhos/helpers/date_utils.dart';
+
+enum TipoEntrega { entrega, retirada, noLocal }
+
 
 class ConclusaoPedidoPage extends StatefulWidget {
   @override
@@ -21,6 +27,12 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
   String _formaPagamento = 'Pix';
   final List<String> _formasPagamento = ['Pix', 'Débito', 'Crédito', 'Voucher', 'Dinheiro'];
   List<Acompanhamento> _acompanhamentos = [];
+  final double _freteEntrega = 4.0;
+  TipoEntrega _tipoEntrega = TipoEntrega.entrega;
+
+  /// Data e hora da entrega (opcional)
+  DateTime? _dataEntrega;
+  TimeOfDay? _horaEntrega;
 
   @override
   void initState() {
@@ -50,22 +62,38 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
     final user = authNotifier.user;
 
     if (!authNotifier.isAuthenticated || user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário não autenticado ou dados ainda não carregados.')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Usuário não autenticado ou dados ainda não carregados.');
       setState(() => _isLoading = false);
       return;
     }
 
     if (carrinho.itens.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seu carrinho está vazio!')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Seu carrinho está vazio!');
       setState(() => _isLoading = false);
       return;
     }
 
-    try {
+    double frete = _tipoEntrega == TipoEntrega.entrega ? _freteEntrega : 0.0;
+
+  // Valida horário para entrega
+    if (_tipoEntrega == TipoEntrega.entrega) {
+      final now = DateTime.now();
+      final selectedDateTime = DateTime(
+        _dataEntrega?.year ?? now.year,
+        _dataEntrega?.month ?? now.month,
+        _dataEntrega?.day ?? now.day,
+        _horaEntrega?.hour ?? now.hour,
+        _horaEntrega?.minute ?? now.minute,
+    );
+
+    if (selectedDateTime.isBefore(now.add(const Duration(hours: 1)))) {
+       DialogHelper.showTemporaryToast(context, 'O horário de entrega deve ser pelo menos 1 hora após o pedido.');
+       setState(() => _isLoading = false);
+        return;
+    }
+  }
+
+  try {
       final pedido = Pedido(
         id: '',
         numeroPedido: 0,
@@ -76,23 +104,25 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
         status: 'pendente',
         data: DateTime.now(),
         impresso: false,
-        endereco: user.enderecoFormatado,
-        formaPagamento: _formasPagamento,
+        endereco: _tipoEntrega == TipoEntrega.entrega ? user.enderecoFormatado : null,
+        formaPagamento: [_formaPagamento],
+        tipoEntrega: _tipoEntrega.name, // Salva o tipo de entrega
+        dataEntrega: _dataEntrega,
+        horaEntrega: _horaEntrega != null && _dataEntrega != null
+            ? combineDateAndTime(_dataEntrega!, _horaEntrega!)
+            : null,
+        frete: frete,
       );
 
       await PedidoService().criarPedido(pedido);
       carrinho.limpar();
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pedido finalizado com sucesso!')),
-        );
+        DialogHelper.showTemporaryToast(context, 'Pedido finalizado com sucesso!');
       }
     } catch (e) {
       debugPrint('Erro ao finalizar pedido: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao finalizar pedido')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Erro ao finalizar pedido');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -123,7 +153,7 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
               final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
               final index = carrinho.itens.indexWhere((item) => item.produto.id == produtoId);
               if (index >= 0) {
-                carrinho.atualizarObservacaoPorIndice(index, controller.text.trim());
+                carrinho.atualizarObservacao(index, controller.text.trim());
               }
               Navigator.of(context).pop();
             },
@@ -183,9 +213,7 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
                                 if (selecionadosNomes.length < 3) {
                                   selecionadosNomes.add(acomp.nome);
                                 } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Máximo de 3 acompanhamentos.')),
-                                  );
+                                  DialogHelper.showTemporaryToast(context, 'Máximo de 3 acompanhamentos.');
                                 }
                               } else {
                                 selecionadosNomes.remove(acomp.nome);
@@ -201,7 +229,7 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
                       final selecionadosObjetos = _acompanhamentos
                           .where((a) => selecionadosNomes.contains(a.nome))
                           .toList();
-                      carrinho.atualizarAcompanhamentosPorIndice(index, selecionadosObjetos);
+                      carrinho.atualizarAcompanhamentos(index, selecionadosObjetos);
                       Navigator.of(context).pop();
                     },
                     child: const Text('Salvar'),
@@ -215,6 +243,108 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
       },
     );
   }
+
+  /// Widget para selecionar tipo de entrega (Entrega / Retirada / No Local)
+  Widget _buildTipoEntrega() {
+  return _buildGlassCard(
+  child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+  const Text('Forma de Recebimento:', style: TextStyle(fontSize: 16)),
+  const SizedBox(height: 8),
+  Wrap(
+  spacing: 8,
+  children: TipoEntrega.values.map((tipo) {
+  String label;
+  switch (tipo) {
+  case TipoEntrega.entrega:
+  label = 'Entrega';
+  break;
+  case TipoEntrega.retirada:
+  label = 'Retirada';
+  break;
+  case TipoEntrega.noLocal:
+  label = 'No Local';
+  break;
+  }
+  return ChoiceChip(
+  label: Text(label),
+  selected: _tipoEntrega == tipo,
+  onSelected: (selected) {
+  if (selected) {
+  setState(() => _tipoEntrega = tipo);
+  }
+  },
+  );
+  }).toList(),
+  ),
+  if (_tipoEntrega == TipoEntrega.entrega) ...[
+  const SizedBox(height: 8),
+  Row(
+  children: [
+  ElevatedButton(
+  onPressed: _selecionarData,
+  child: Text(_dataEntrega == null
+  ? 'Selecionar Data'
+      : '${_dataEntrega!.day}/${_dataEntrega!.month}/${_dataEntrega!.year}'),
+  ),
+  const SizedBox(width: 8),
+  ElevatedButton(
+  onPressed: _selecionarHora,
+  child: Text(_horaEntrega == null
+  ? 'Selecionar Hora'
+      : '${_horaEntrega!.format(context)}'),
+  ),
+  ],
+  ),
+  ],
+  ],
+  ),
+  );
+  }
+
+  /// Seleciona data
+  Future<void> _selecionarData() async {
+  final now = DateTime.now();
+  final pickedDate = await showDatePicker(
+  context: context,
+  initialDate: now,
+  firstDate: now,
+  lastDate: now.add(const Duration(days: 30)),
+  );
+
+  if (pickedDate != null) {
+  setState(() => _dataEntrega = pickedDate);
+  }
+  }
+
+  /// Seleciona hora
+  Future<void> _selecionarHora() async {
+  final now = DateTime.now();
+  final initialTime = TimeOfDay.fromDateTime(now.add(const Duration(hours: 1)));
+  final pickedTime = await showTimePicker(
+  context: context,
+  initialTime: initialTime,
+  );
+
+  if (pickedTime != null) {
+  final pickedDateTime = DateTime(
+  _dataEntrega?.year ?? now.year,
+  _dataEntrega?.month ?? now.month,
+  _dataEntrega?.day ?? now.day,
+  pickedTime.hour,
+  pickedTime.minute,
+  );
+
+  if (pickedDateTime.isBefore(now.add(const Duration(hours: 1)))) {
+  DialogHelper.showTemporaryToast(context, 'O horário de entrega deve ser pelo menos 1 hora após o pedido.');
+  return;
+  }
+
+  setState(() => _horaEntrega = pickedTime);
+  }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +372,7 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
             appBar: AppBar(
               title: const Text('Confirmar Pedido'),
               backgroundColor: Colors.red,
+              elevation: 2,
             ),
             body: SafeArea(
               child: Padding(
@@ -254,15 +385,23 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
                       onPressed: () => context.go('/pedido'),
                       icon: const Icon(Icons.arrow_back),
                       label: const Text('Voltar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[200],
+                        foregroundColor: Colors.black87,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 16),
+
+                    /// Tipo de entrega
+                    _buildTipoEntrega(),
                     const SizedBox(height: 12),
-                    // Cartão de Endereço
-                    Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
+
+                    /// Endereço (para entrega)
+                    if (_tipoEntrega == TipoEntrega.entrega)
+                      _buildGlassCard(
                         child: Row(
                           children: [
                             const Icon(Icons.location_on, color: Colors.red),
@@ -276,215 +415,263 @@ class _ConclusaoPedidoPageState extends State<ConclusaoPedidoPage> {
                           ],
                         ),
                       ),
-                    ),
                     const SizedBox(height: 12),
-                    // Cartão de Forma de Pagamento
-                    Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.payment, color: Colors.green),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text(
-                                'Forma de Pagamento (Devem ser feitos no local):',
-                                style: TextStyle(fontSize: 16),
-                              ),
+
+                    /// Forma de pagamento
+                    _buildGlassCard(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.payment, color: Colors.green),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Forma de Pagamento (Feito no local):',
+                              style: TextStyle(fontSize: 16),
                             ),
-                            DropdownButton<String>(
-                              value: _formaPagamento,
-                              items: _formasPagamento
-                                  .map((f) => DropdownMenuItem(
-                                value: f,
-                                child: Text(f),
-                              ))
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value != null) setState(() => _formaPagamento = value);
-                              },
-                            ),
-                          ],
-                        ),
+                          ),
+                          DropdownButton<String>(
+                            value: _formaPagamento,
+                            items: _formasPagamento
+                                .map((f) => DropdownMenuItem(
+                              value: f,
+                              child: Text(f),
+                            ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) setState(() => _formaPagamento = value);
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Lista de Itens do Pedido
+
+                    /// Lista de itens
                     Expanded(
-                      child: ListView.separated(
-                        itemCount: carrinho.itens.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
+                      child: AnimatedList(
+                        key: GlobalKey<AnimatedListState>(),
+                        initialItemCount: carrinho.itens.length,
+                        itemBuilder: (context, index, animation) {
                           final item = carrinho.itens[index];
-                          return Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.asset(
-                                          item.produto.imageUrl.isNotEmpty
-                                              ? item.produto.imageUrl.first
-                                              : 'assets/imagem_padrao.png',
-                                          width: 60,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                          const Icon(Icons.broken_image),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.produto.nome,
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16),
-                                            ),
-                                            Text(
-                                              'Qtd: ${item.quantidade}',
-                                              style: const TextStyle(fontSize: 14),
-                                            ),
-                                            if ((item.observacao ?? '').isNotEmpty)
-                                              Text(
-                                                'Obs: ${item.observacao}',
-                                                style: const TextStyle(
-                                                    fontStyle: FontStyle.italic,
-                                                    fontSize: 14),
-                                              ),
-                                            if ((item.acompanhamentos ?? []).isNotEmpty)
-                                              Text(
-                                                'Acomp.: ${item.acompanhamentos!.map((a) => a.nome).join(', ')}',
-                                                style: const TextStyle(
-                                                    fontStyle: FontStyle.italic,
-                                                    fontSize: 14),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            'R\$ ${(item.produto.preco * item.quantidade).toStringAsFixed(2)}',
-                                            style: const TextStyle(
-                                                color: Colors.green,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.remove_circle_outline),
-                                                onPressed: () {
-                                                  carrinho.diminuirQuantidadePorIndice(index);
-                                                },
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.add_circle_outline),
-                                                onPressed: () {
-                                                  carrinho.aumentarQuantidadePorIndice(index);
-                                                },
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                                onPressed: () {
-                                                  carrinho.removerPorIndice(index);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      TextButton.icon(
-                                        onPressed: () {
-                                          _editarObservacaoDialog(
-                                              context, item.produto.id, item.observacao);
-                                        },
-                                        icon: const Icon(Icons.edit_note_outlined),
-                                        label: const Text('Editar Obs'),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      TextButton.icon(
-                                        onPressed: () {
-                                          _editarAcompanhamentosDialog(
-                                              context, index, item);
-                                        },
-                                        icon: const Icon(Icons.fastfood),
-                                        label: const Text('Editar Acomp.'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+
+                          return SizeTransition(
+                            sizeFactor: animation,
+                            axis: Axis.vertical,
+                            child: _buildGlassItemCard(item, index, carrinho),
                           );
                         },
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Total
+
+                    /// Totais
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Itens:', style: TextStyle(fontSize: 16)),
+                        Text('R\$ ${carrinho.total.toStringAsFixed(2)}'),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Frete:', style: TextStyle(fontSize: 16)),
+                        Text('R\$ ${_tipoEntrega == TipoEntrega.entrega ? _freteEntrega.toStringAsFixed(2) : '0.00'}'),
+                      ],
+                    ),
+                    const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Total:',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         Text(
-                          'R\$ ${carrinho.total.toStringAsFixed(2)}',
+                          'R\$ ${(carrinho.total + (_tipoEntrega == TipoEntrega.entrega ? _freteEntrega : 0)).toStringAsFixed(2)}',
                           style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 24),
-                    // Botão Finalizar
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orangeAccent,
-                          textStyle: const TextStyle(fontSize: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      height: 50,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orangeAccent.withOpacity(0.85),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: _isLoading ? null : _finalizarPedido,
+                            child: _isLoading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text(
+                              'Finalizar Pedido',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
-                        onPressed: _isLoading ? null : _finalizarPedido,
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Finalizar Pedido'),
                       ),
                     ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildGlassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassItemCard(ItemCarrinho item, int index, CarrinhoProvider carrinho) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.lightGreenAccent.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        item.produto.imageUrl.isNotEmpty
+                            ? item.produto.imageUrl.first
+                            : 'assets/imagem_padrao.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.produto.nome,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text('Qtd: ${item.quantidade}',
+                              style: const TextStyle(fontSize: 14)),
+                          if ((item.observacao ?? '').isNotEmpty)
+                            Text('Obs: ${item.observacao}',
+                                style: const TextStyle(
+                                    fontStyle: FontStyle.italic, fontSize: 14)),
+                          if ((item.acompanhamentos ?? []).isNotEmpty)
+                            Text(
+                                'Acomp.: ${item.acompanhamentos!.map((a) => a.nome).join(', ')}',
+                                style: const TextStyle(
+                                    fontStyle: FontStyle.italic, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'R\$ ${(item.produto.preco * item.quantidade).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: () {
+                                carrinho.diminuirQuantidade(index);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: () {
+                                carrinho.aumentarQuantidade(index);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () {
+                                carrinho.removerPorIndice(index);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        _editarObservacaoDialog(context, item.produto.id, item.observacao);
+                      },
+                      icon: const Icon(Icons.edit_note_outlined),
+                      label: const Text('Editar Obs'),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () {
+                        _editarAcompanhamentosDialog(context, index, item);
+                      },
+                      icon: const Icon(Icons.fastfood),
+                      label: const Text('Editar Acomp.'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

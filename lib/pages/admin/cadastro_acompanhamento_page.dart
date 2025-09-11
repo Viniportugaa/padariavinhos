@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/services/acompanhamento_service.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class CadastroAcompanhamentoPage extends StatefulWidget {
   const CadastroAcompanhamentoPage({Key? key}) : super(key: key);
@@ -34,14 +35,10 @@ class _CadastroAcompanhamentoPageState extends State<CadastroAcompanhamentoPage>
 
       await _service.salvarAcompanhamento(acompanhamento);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Acompanhamento cadastrado com sucesso!')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Acompanhamento cadastrado com sucesso!');
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao cadastrar: $e')),
-      );
+       DialogHelper.showTemporaryToast(context, 'Erro ao cadastrar: $e');
     } finally {
       setState(() => _isSaving = false);
     }

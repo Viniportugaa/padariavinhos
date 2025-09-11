@@ -8,6 +8,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
+import 'package:padariavinhos/services/notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,17 +32,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> updateFcmToken(String uid) async {
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    if (fcmToken == null) return;
+    await NotificationService.initFCM(uid);
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('tokens')
-        .doc(fcmToken)
-        .set({
-      'last_used': Timestamp.now(),
-    }, SetOptions(merge: true));
   }
 
 
@@ -60,8 +53,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final uid = user.uid;
 
-      // Atualiza FCM token
-      await updateFcmToken(uid);
+      await NotificationService.initFCM(uid);
 
       // Busca role do usuário
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -73,13 +65,9 @@ class _LoginPageState extends State<LoginPage> {
       context.go(role == 'admin' ? '/admin' : '/menu');
 
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Erro no login')),
-      );
+      DialogHelper.showTemporaryToast(context, e.message ?? 'Erro no login');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: $e')),
-      );
+        DialogHelper.showTemporaryToast(context, 'Erro: $e');
     } finally {
       setState(() => isLoading = false);
     }

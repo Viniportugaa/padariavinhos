@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/models/produto.dart';
+import 'package:provider/provider.dart';
+import 'package:padariavinhos/notifiers/favoritos_provider.dart';
 
 class ProductCardHorizontal extends StatelessWidget {
   final Produto produto;
@@ -25,6 +27,9 @@ class ProductCardHorizontal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final favoritosProvider = context.watch<FavoritosProvider>();
+    final isFavorito = favoritosProvider.isFavorito(produto.id);
+
     return GestureDetector(
       onTap: onViewDetails,
       child: Container(
@@ -46,20 +51,34 @@ class ProductCardHorizontal extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => _abrirImagemProduto(context),
-                    child: Hero(
-                      tag: produto.id,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: produto.imageUrl.isNotEmpty
-                            ? Image.network(
-                          produto.imageUrl.first,
-                          height: 100,
-                          width: 100,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
+                  Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: () => _abrirImagemProduto(context),
+                        child: Hero(
+                          tag: produto.id,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: produto.imageUrl.isNotEmpty
+                                ? Image.network(
+                              produto.imageUrl.first,
+                              height: 100,
+                              width: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 100,
+                                  width: 100,
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey,
+                                    size: 50,
+                                  ),
+                                );
+                              },
+                            )
+                            : Container(
                               height: 100,
                               width: 100,
                               color: Colors.grey[300],
@@ -68,21 +87,32 @@ class ProductCardHorizontal extends StatelessWidget {
                                 color: Colors.grey,
                                 size: 50,
                               ),
-                            );
-                          },
-                        )
-                            : Container(
-                          height: 100,
-                          width: 100,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.grey,
-                            size: 50,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      if (produto.vendidoPorPeso)
+                        Positioned(
+                          bottom: 6,
+                          left: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orangeAccent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Por Peso',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -123,26 +153,32 @@ class ProductCardHorizontal extends StatelessWidget {
                 ],
               ),
             ),
-            if (produto.vendidoPorPeso)
-              Positioned(
-                top: 8,
-                right: 8,
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => context.read<FavoritosProvider>().toggleFavorito(produto),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.orangeAccent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Por Peso',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Icon(
+                    isFavorito ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.red,
+                    size: 22,
                   ),
                 ),
               ),
+            ),
             Positioned(
               bottom: 12,
               right: 12,

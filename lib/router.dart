@@ -19,12 +19,14 @@ import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:padariavinhos/services/carrinhos_provider.dart';
 import 'package:padariavinhos/services/transitions.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
-import 'package:padariavinhos/pages/admin/admin_combo_page.dart';
 import 'package:padariavinhos/pages/product_detalhe_page.dart';
 import 'package:padariavinhos/pages/LGPD_page.dart';
 import 'package:padariavinhos/widgets/imagem_produto.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/pages/admin/abertura_page.dart';
+import 'package:padariavinhos/pages/admin/admin_banner_page.dart';
+import 'package:padariavinhos/pages/admin/admin_cria_categoria.dart';
+import 'package:padariavinhos/pages/admin/relatorio_page.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -115,15 +117,24 @@ GoRouter createRouter(AuthNotifier authNotifier) {
             fadeTransitionPage(child: SignUpPage(), state: state),
       ),
       GoRoute(
+        path: '/relatorio',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: const RelatorioPage(), state: state),
+      ),
+      GoRoute(
+        path: '/banneradmin',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: AdminBannersPage(), state: state),
+      ),
+      GoRoute(
+        path: '/categoriadmin',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: CriarCategoriaPage(), state: state),
+      ),
+      GoRoute(
         path: '/lgpd',
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: const PDFScreen(), state: state),
-      ),
-
-      GoRoute(
-        path: '/comboadmin',
-        pageBuilder: (context, state) =>
-            fadeTransitionPage(child: AdminCombosPage(), state: state),
       ),
       GoRoute(
         path: '/cadastro-produto',
@@ -158,97 +169,6 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: const SignUpPage(), state: state),
       ),
-      ShellRoute(
-        builder: (context, state, child) {
-          final hideNav = state.uri.path == '/menu';
-
-          return Scaffold(
-            body: child,
-            bottomNavigationBar: hideNav
-                ? null
-                : BottomNavigationBar(
-              currentIndex: _getIndexFromLocation(state.uri.path),
-              selectedItemColor: Colors.red,
-              unselectedItemColor: Colors.grey,
-              onTap: (index) {
-                const paths = [
-                  '/menu',
-                  '/meuspedidos',
-                  '/pedido',
-                  '/opcoes',
-                  '/conclusao-pedido'
-                ];
-                context.go(paths[index]);
-              },
-              items: [
-                const BottomNavigationBarItem(
-                    icon: Icon(Icons.home), label: 'Menu'),
-                const BottomNavigationBarItem(
-                    icon: Icon(Icons.receipt), label: 'Meus Pedidos'),
-                const BottomNavigationBarItem(
-                    icon: Icon(Icons.add_circle), label: 'Pedido'),
-                const BottomNavigationBarItem(
-                    icon: Icon(Icons.person), label: 'Opções'),
-                BottomNavigationBarItem(
-                  icon: Consumer<CarrinhoProvider>(
-                    builder: (_, carrinho, __) {
-                      final temItens = carrinho.itens.isNotEmpty;
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(Icons.shopping_cart),
-                          if (temItens)
-                            Positioned(
-                              top: -4,
-                              right: -4,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border:
-                                  Border.all(color: Colors.white),
-                                ),
-                                child: const Icon(
-                                  Icons.priority_high,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            )
-                        ],
-                      );
-                    },
-                  ),
-                  label: 'Conclusão',
-                ),
-              ],
-            ),
-          );
-        },
-        routes: [
-          GoRoute(
-              path: '/menu',
-              pageBuilder: (c, s) =>
-                  fadeTransitionPage(child: MenuInicial(), state: s)),
-          GoRoute(
-              path: '/meuspedidos',
-              pageBuilder: (c, s) =>
-                  fadeTransitionPage(child: MeuPedidoPage(), state: s)),
-          GoRoute(
-              path: '/pedido',
-              pageBuilder: (c, s) =>
-                  fadeTransitionPage(child: FazerPedidoPage(), state: s)),
-          GoRoute(
-              path: '/opcoes',
-              pageBuilder: (c, s) =>
-                  fadeTransitionPage(child: OpcoesPage(), state: s)),
-          GoRoute(
-              path: '/conclusao-pedido',
-              pageBuilder: (c, s) =>
-                  fadeTransitionPage(child: ConclusaoPedidoPage(), state: s)),
-        ],
-      ),
       GoRoute(
         path: '/quem-somos',
         pageBuilder: (c, s) => fadeTransitionPage(
@@ -261,7 +181,133 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (c, s) =>
             fadeTransitionPage(child: CadastroProdutoPage(), state: s),
       ),
+      ShellRoute(
+        builder: (context, state, child) {
+          final hideNav = state.uri.path == '/menu';
+          final currentIndex = _getIndexFromLocation(state.uri.path);
+          final isPedidoPage = state.uri.path == '/pedido';
+
+          return Scaffold(
+            body: child,
+            floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+            floatingActionButton:(state.uri.path == '/menu') ? null : GestureDetector(
+              onTap: () => context.go('/pedido'),
+              child: Container(
+                height: 70,
+                width: 70,
+                decoration: BoxDecoration(
+                  color: isPedidoPage ? Colors.red : Colors.grey[400],
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: Icon(
+                  Icons.add_circle,
+                  size: 36,
+                  color: isPedidoPage ? Colors.white : Colors.black54,
+                ),
+              ),
+            ),
+            bottomNavigationBar: hideNav
+                ? null
+                : BottomAppBar(
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 8,
+              child: SizedBox(
+                height: 60,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(context, Icons.home, 'Menu', '/menu', currentIndex == 0),
+                    _buildNavItem(context, Icons.receipt, 'Pedidos', '/meuspedidos', currentIndex == 1),
+                    SizedBox(width: 70), // Espaço para o botão central
+                    _buildNavItem(context, Icons.person, 'Opções', '/opcoes', currentIndex == 3),
+                    Consumer<CarrinhoProvider>(
+                      builder: (_, carrinho, __) {
+                        final temItens = carrinho.itens.isNotEmpty;
+                        return _buildNavItem(
+                          context,
+                          Icons.shopping_cart,
+                          'Carrinho',
+                          '/conclusao-pedido',
+                          currentIndex == 4,
+                          badge: temItens,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: '/menu',
+            pageBuilder: (c, s) => fadeTransitionPage(child: MenuInicial(), state: s),
+          ),
+          GoRoute(
+            path: '/meuspedidos',
+            pageBuilder: (c, s) => fadeTransitionPage(child: MeuPedidoPage(), state: s),
+          ),
+          GoRoute(
+            path: '/pedido',
+            pageBuilder: (c, s) => fadeTransitionPage(child: FazerPedidoPage(), state: s),
+          ),
+          GoRoute(
+            path: '/opcoes',
+            pageBuilder: (c, s) => fadeTransitionPage(child: OpcoesPage(), state: s),
+          ),
+          GoRoute(
+            path: '/conclusao-pedido',
+            pageBuilder: (c, s) => fadeTransitionPage(child: ConclusaoPedidoPage(), state: s),
+          ),
+        ],
+      )
+
     ],
+  );
+}
+
+Widget _buildNavItem(BuildContext context, IconData icon, String label, String path, bool selected, {bool badge = false}) {
+  return InkWell(
+    onTap: () => context.go(path),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(icon, color: selected ? Colors.red : Colors.grey),
+            if (badge)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white),
+                  ),
+                  child: const Icon(
+                    Icons.priority_high,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+          ],
+        ),
+        Text(label, style: TextStyle(color: selected ? Colors.red : Colors.grey, fontSize: 12)),
+      ],
+    ),
   );
 }
 

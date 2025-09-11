@@ -4,6 +4,8 @@ import 'package:padariavinhos/models/pedido.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/widgets/pedido_card.dart';
 import 'package:padariavinhos/services/pedido_provider.dart';
+import 'dart:io';
+import 'package:padariavinhos/models/user.dart';
 
 class ListaPedidosPage extends StatefulWidget {
   const ListaPedidosPage({super.key});
@@ -14,6 +16,9 @@ class ListaPedidosPage extends StatefulWidget {
 
 class _ListaPedidosPageState extends State<ListaPedidosPage> {
   String filtro = 'hoje';
+
+  // Cache de usuários para evitar múltiplos fetch
+  final Map<String, User> _usuariosCache = {};
 
   Stream<QuerySnapshot> _pedidosStream() {
     final hoje = DateTime.now();
@@ -33,6 +38,18 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
     }
 
     return query.snapshots();
+  }
+
+  Future<User?> _getUsuario(String userId) async {
+    if (_usuariosCache.containsKey(userId)) return _usuariosCache[userId];
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    if (doc.exists) {
+      final user = User.fromMap(doc.data()!);
+      _usuariosCache[userId] = user; // adiciona no cache
+      return user;
+    }
+    return null;
   }
 
   @override
@@ -71,10 +88,16 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
             itemCount: pedidos.length,
             itemBuilder: (context, index) {
               final pedido = pedidos[index];
-              return ChangeNotifierProvider(
-                key: ValueKey(pedido.id), // garante que cada provider seja único
-                create: (_) => PedidoProvider(pedidoId: pedido.id),
-                child: const PedidoCard(),
+
+              return FutureBuilder<User?>(
+                future: _getUsuario(pedido.userId),
+                builder: (context, snapshotUsuario) {
+                  final usuario = snapshotUsuario.data;
+                  return PedidoCard(
+                    pedido: pedido,
+                    usuario: usuario,
+                  );
+                },
               );
             },
           );

@@ -17,27 +17,48 @@ class CategoriaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = selecionado ? Colors.orange : _getColorForCategoria(nome);
+    final iconColor = selecionado ? Colors.white : Colors.black;
+    final textColor = selecionado ? Colors.white : Colors.black;
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(  // ← aqui precisa do `child`
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
         constraints: const BoxConstraints(minWidth: 80),
         margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: Colors.yellow[700],
+          color: bgColor,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 15),
-            const SizedBox(height: 3),
-            Text(nome, style: const TextStyle(fontSize: 10)),
+            Icon(icon, size: 15, color: iconColor),
+            const SizedBox(width: 3),
+            Text(nome, style: TextStyle(fontSize: 10, color: textColor)),
             const SizedBox(width: 2),
-            const Icon(Icons.arrow_forward_ios, size: 12),
+            Icon(Icons.arrow_forward_ios, size: 12, color: iconColor),
           ],
         ),
       ),
     );
+  }
+
+  Color _getColorForCategoria(String nome) {
+    switch (nome.toLowerCase()) {
+      case 'Bolos': return Colors.pink[200]!;
+      case 'paes': return Colors.brown[200]!;
+      case 'sucos': return Colors.green[200]!;
+      case 'lanches': return Colors.yellow[200]!;
+      case 'refrigerante': return Colors.blue[200]!;
+      case 'doce': return Colors.purple[200]!;
+      case 'salgados': return Colors.red[200]!;
+      case 'festividade': return Colors.orange[200]!;
+      case 'pratos': return Colors.teal[200]!;
+      default: return Colors.red[700]!;
+    }
   }
 }

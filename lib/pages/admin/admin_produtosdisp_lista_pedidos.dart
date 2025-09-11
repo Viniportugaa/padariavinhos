@@ -4,6 +4,9 @@ import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/pages/cadastro_produto_page.dart';
 import 'package:go_router/go_router.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
+
+
 class AdminProdutosPage extends StatefulWidget {
   @override
   State<AdminProdutosPage> createState() => _AdminProdutosPageState();
@@ -15,6 +18,143 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
     'Festividade', 'Pratos', 'Doce', 'Lanches',
     'Bolos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
   ];
+
+  void _editarProduto(BuildContext context, Produto produto) {
+    final nomeController = TextEditingController(text: produto.nome);
+    final descricaoController = TextEditingController(text: produto.descricao);
+    final precoController = TextEditingController(text: produto.preco.toString());
+    String categoria = produto.category;
+    bool disponivel = produto.disponivel;
+    bool vendidoPorPeso = produto.vendidoPorPeso;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            top: 16,
+            left: 16,
+            right: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Editar Produto',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // Nome
+                TextField(
+                  controller: nomeController,
+                  decoration: const InputDecoration(
+                    labelText: "Nome",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Descrição
+                TextField(
+                  controller: descricaoController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: "Descrição",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Preço
+                TextField(
+                  controller: precoController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Preço",
+                    prefixText: "R\$ ",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Categoria
+                DropdownButtonFormField<String>(
+                  value: categoria,
+                  items: categoriasFixas
+                      .where((c) => c != "Todas")
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) categoria = val;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Categoria",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Disponível toggle
+                SwitchListTile(
+                  value: disponivel,
+                  title: const Text("Disponível"),
+                  activeColor: Colors.deepOrange,
+                  onChanged: (val) {
+                    disponivel = val;
+                  },
+                ),
+
+                // Vendido por peso toggle
+                SwitchListTile(
+                  value: vendidoPorPeso,
+                  title: const Text("Vendido por peso"),
+                  activeColor: Colors.deepOrange,
+                  onChanged: (val) {
+                    vendidoPorPeso = val;
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save, size: 18),
+                  label: const Text('Salvar', style: TextStyle(fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrange,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    await FirebaseFirestore.instance.collection('produtos').doc(produto.id).update({
+                      'nome': nomeController.text.trim(),
+                      'descricao': descricaoController.text.trim(),
+                      'preco': double.tryParse(precoController.text.replaceAll(',', '.')) ?? produto.preco,
+                      'category': categoria,
+                      'disponivel': disponivel,
+                      'vendidoPorPeso': vendidoPorPeso,
+                      'imageUrl': produto.imageUrl, // mantém as imagens já salvas
+                    });
+
+                    Navigator.of(context).pop();
+                    DialogHelper.showTemporaryToast(context, "Produto '${produto.nome}' atualizado!");
+                    setState(() {});
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   String categoriaSelecionada = 'Todas';
   String filtroNome = '';
@@ -48,9 +188,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
 
     if (confirm == true) {
       await FirebaseFirestore.instance.collection('produtos').doc(produtoId).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Produto '$nomeProduto' excluído!")),
-      );
+      DialogHelper.showTemporaryToast(context, "Produto '$nomeProduto' excluído!");
     }
   }
 
@@ -114,7 +252,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                         'acompanhamentosIds': selecionados,
                       });
                       Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Acompanhamentos atualizados!')));
+                       DialogHelper.showTemporaryToast(context, 'Acompanhamentos atualizados!');
                       setState(() {});
                     },
                   ),
@@ -259,23 +397,33 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                                     GestureDetector(
                                       onTap: () => toggleDisponivel(doc.id, produto.disponivel),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        width: 28,
+                                        height: 28,
                                         decoration: BoxDecoration(
                                           color: produto.disponivel ? Colors.green : Colors.red,
-                                          borderRadius: BorderRadius.circular(12),
+                                          shape: BoxShape.circle,
                                         ),
-                                        child: Text(produto.disponivel ? 'Disponível' : 'Indisponível',
-                                            style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                        child: const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
                                       ),
                                     ),
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon: const Icon(Icons.edit, color: Colors.deepOrange),
-                                          onPressed: () => context.go('/cadastro-produto', extra: produto),
+                                          icon: const Icon(Icons.fastfood, color: Colors.deepOrange, size: 20),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          tooltip: "Editar produto",
+                                          onPressed: () => _editarProduto(context, produto),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.settings, color: Colors.deepOrange),
+                                          icon: const Icon(Icons.playlist_add, color: Colors.blue, size: 20),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          tooltip: "Editar acompanhamentos",
                                           onPressed: () => _editarAcompanhamentos(context, doc.id, acompanhsIds),
                                         ),
                                       ],

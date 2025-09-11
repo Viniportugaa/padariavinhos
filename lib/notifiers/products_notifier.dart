@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../models/produto.dart';
 import '../services/product_service.dart';
 import 'dart:async';
+import '../notifiers/favoritos_provider.dart';
+import 'package:provider/provider.dart';
 
 
 class ProductsNotifier extends ChangeNotifier {
@@ -14,9 +16,22 @@ class ProductsNotifier extends ChangeNotifier {
 
   String? categoriaSelecionada;
 
+  List<Produto> produtosFiltrados(FavoritosProvider favoritosProvider) {
+    if (categoriaSelecionada == null) return produtos;
+
+    final filtro = categoriaSelecionada!.trim().toLowerCase();
+
+    if (filtro == 'favoritos') {
+      return produtos.where((p) => favoritosProvider.isFavorito(p.id)).toList();
+    }
+      return produtos
+          .where((p) => p.category.trim().toLowerCase() == filtro)
+          .toList();
+  }
+
   final List<String> categoriasFixas = [
-    'Festividade', 'Bolos', 'Doce', 'Lanches',
-    'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
+    'Pratos', 'Bolos', 'Doce', 'Lanches',
+    'Festividades', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
   ];
 
   StreamSubscription? _subscription;
@@ -42,12 +57,6 @@ class ProductsNotifier extends ChangeNotifier {
     void dispose() {
       _subscription?.cancel();
       super.dispose();
-    }
-
-    List<Produto> get produtosFiltrados {
-      if (categoriaSelecionada == null) return produtos;
-      final filtro = categoriaSelecionada!.trim().toLowerCase();
-      return produtos.where((p) => p.category.trim().toLowerCase() == filtro).toList();
     }
 
     List<String> get categoriasUnicas {

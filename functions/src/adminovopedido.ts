@@ -30,21 +30,20 @@ export const notifyAdminNewPedido = onDocumentCreated(
       logger.info(`[notifyAdminNewPedido] Admins encontrados: ${adminSnapshot.size}`);
 
       const tokens: string[] = [];
+      const tokenToAdminMap: Record<string, string> = {};
+
       adminSnapshot.forEach((doc) => {
         const docTokens = getUserTokens(doc);
-        logger.info(`[notifyAdminNewPedido] Tokens do admin ${doc.id}:`, docTokens);
+        docTokens.forEach(token => tokenToAdminMap[token] = doc.id);
         tokens.push(...docTokens);
       });
 
-      // Remove duplicatas
       const uniqueTokens = Array.from(new Set(tokens));
-
       if (uniqueTokens.length === 0) {
         logger.info("[notifyAdminNewPedido] Nenhum token de admin encontrado.");
         return;
       }
 
-      // Define mensagem
       const messagePayload = {
         notification: {
           title: "Novo pedido recebido",
@@ -57,10 +56,10 @@ export const notifyAdminNewPedido = onDocumentCreated(
           },
         },
       };
-        const messaging = admin.messaging();
 
-      // Envia notificações em lotes de até 500 tokens
+      const messaging = admin.messaging();
       const BATCH_SIZE = 500;
+
       for (let i = 0; i < uniqueTokens.length; i += BATCH_SIZE) {
         const batchTokens = uniqueTokens.slice(i, i + BATCH_SIZE);
         logger.info(`[notifyAdminNewPedido] Enviando notificação para ${batchTokens.length} tokens`);
@@ -72,10 +71,27 @@ export const notifyAdminNewPedido = onDocumentCreated(
 
         logger.info(`[notifyAdminNewPedido] Envio concluído: sucesso=${response.successCount}, falhas=${response.failureCount}`);
 
-        // Log de falhas detalhadas
-        response.responses.forEach((resp: admin.messaging.SendResponse, idx: number) => {
+        response.responses.forEach((resp, idx) => {
           if (!resp.success) {
-            logger.error(`[notifyAdminNewPedido] Falha ao enviar para token ${batchTokens[idx]}:`, resp.error);
+            const err = resp.error;
+            const token = batchTokens[idx];
+            const adminId = tokenToAdminMap[token];
+
+            logger.error(`[notifyAdminNewPedido] Falha ao enviar para token ${token}:`, err);
+
+            if (err &&
+                (err.code === 'messaging/registration-token-not-registered' ||
+                 err.code === 'messaging/invalid-argument') &&
+                adminId
+            ) {
+              admin.firestore()
+                .collection('users')
+                .doc(adminId)
+                .collection('tokens')
+                .doc(token)
+                .delete()
+                .catch(e => logger.error("Erro ao remover token inválido:", e));
+            }
           }
         });
       }

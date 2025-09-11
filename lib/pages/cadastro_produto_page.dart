@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/produto.dart';
 import '../services/product_service.dart';
+import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class CadastroProdutoPage extends StatefulWidget {
   final Produto? produto;
@@ -81,19 +82,16 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
 
       if (widget.produto != null) {
         await _service.updateProduct(produto); // método de update
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produto atualizado com sucesso!')));
+         DialogHelper.showTemporaryToast(context, 'Produto atualizado com sucesso!');
       } else {
         await _service.saveProduct(produto); // método de create
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produto cadastrado com sucesso!')));
+         DialogHelper.showTemporaryToast(context, 'Produto cadastrado com sucesso!');
       }
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Produto salvo com sucesso!')),
-      );
+      DialogHelper.showTemporaryToast(context, 'Produto salvo com sucesso!');
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar produto: $e')),
-      );
+       DialogHelper.showTemporaryToast(context, 'Erro ao salvar produto: $e');
     } finally {
       setState(() => _isSaving = false);
     }
