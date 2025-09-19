@@ -11,8 +11,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.7.3") // Use a mais recente compatível com Flutter
-        classpath("com.google.gms:google-services:4.4.1") // Necessário para Firebase
+        classpath("com.android.tools.build:gradle:8.7.3")
+        classpath("com.google.gms:google-services:4.4.1")
     }
 }
 

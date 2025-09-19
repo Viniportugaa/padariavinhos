@@ -4,11 +4,10 @@ import 'produto.dart';
 class ItemCarrinho {
   final Produto produto;
   double quantidade;
-  double precoEstimado;
-  double totalEstimado;
-  double? valorFinal;
+  double preco;
   String? observacao;
   List<Acompanhamento>? acompanhamentos;
+  double? precoUnitarioCustom;
 
 
   Map<String, List<Acompanhamento>>? acompanhamentosPorProduto;
@@ -20,66 +19,87 @@ class ItemCarrinho {
     this.quantidade = 1,
     this.observacao,
     this.acompanhamentos = const [],
-    required this.precoEstimado,
-    required this.totalEstimado,
-    this.valorFinal,
+    required this.preco,
+    this.precoUnitarioCustom,
     this.acompanhamentosPorProduto,
   }) {
     idUnico = gerarIdUnico();
   }
 
   double get subtotal {
-    final valorProduto = valorFinal ?? precoEstimado;
+    final valorAcomp = _calcularValorAcompanhamentos();
+    final precoUnitario = precoUnitarioCustom ?? preco;
+    return (precoUnitario * quantidade) + valorAcomp;
+  }
 
-    double valorAcomp = 0.0;
+  double _calcularValorAcompanhamentos() {
     if (produto.category == 'Pratos') {
-      valorAcomp = valorAcompanhamentosPratos;
-    } else if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
-      valorAcomp = acompanhamentos!.fold(0.0, (soma, a) => soma + a.preco);
+      return valorAcompanhamentosPratos;
     }
 
-    return (valorProduto + valorAcomp) * quantidade;
+    if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
+      return acompanhamentos!.fold(0.0, (soma, a) => soma + a.preco);
+    }
+
+    return 0.0;
   }
 
   double get valorAcompanhamentosPratos {
-    // Se não for prato ou não houver acompanhamentos
-    if (produto.category != 'Pratos' || acompanhamentos == null || acompanhamentos!.isEmpty) {
+    if (produto.category != 'Pratos' ||
+        acompanhamentos == null ||
+        acompanhamentos!.isEmpty) {
       return 0.0;
     }
 
-    // Até 3 acompanhamentos grátis
     if (acompanhamentos!.length <= 3) return 0.0;
 
-    // Se houver mais de 3, cada extra adiciona o menor valor
     final sortedPrecos = acompanhamentos!.map((a) => a.preco).toList()..sort();
     final extras = sortedPrecos.skip(3).toList();
     return extras.fold(0.0, (soma, preco) => soma + preco);
   }
 
   factory ItemCarrinho.fromMap(Map<String, dynamic> map) {
+    // Cria o produto primeiro
+    final produto = Produto.fromMap(map['produto'], map['produtoId']);
+
+    // Define o preço do item: se houver 'preco' salvo, usa, senão pega do produto
+    final precoItem = (map['preco'] != null)
+        ? (map['preco'] as num).toDouble()
+        : produto.preco;
+
+    // Cria a lista de acompanhamentos
+    final acompanhamentos = map['acompanhamentos'] != null
+        ? List<Map<String, dynamic>>.from(map['acompanhamentos'])
+        .map((acompMap) =>
+        Acompanhamento.fromMap(acompMap, acompMap['id'] ?? ''))
+        .toList()
+        : <Acompanhamento>[];
+
+    // Cria o mapa de acompanhamentos por produto
+    final acompanhamentosPorProduto = map['acompanhamentosPorProduto'] != null
+        ? (map['acompanhamentosPorProduto'] as Map<String, dynamic>).map(
+          (key, value) => MapEntry(
+        key,
+        List<Map<String, dynamic>>.from(value)
+            .map((aMap) => Acompanhamento.fromMap(aMap, aMap['id'] ?? ''))
+            .toList(),
+      ),
+    )
+        : null;
+
     return ItemCarrinho(
-      produto: Produto.fromMap(map['produto'], map['produtoId']),
-      quantidade: (map['quantidade'] ?? 1).toDouble(),      observacao: map['observacao'],
-      acompanhamentos: map['acompanhamentos'] != null
-          ? List<Map<String, dynamic>>.from(map['acompanhamentos'])
-          .map((acompMap) => Acompanhamento.fromMap(acompMap, acompMap['id'] ?? ''))
-          .toList()
-          : [],
-      precoEstimado: (map['precoEstimado'] ?? 0).toDouble(),
-      totalEstimado: (map['totalEstimado'] ?? 0).toDouble(),
-      valorFinal: map['valorFinal'] != null ? (map['valorFinal'] as num).toDouble() : null,
-      acompanhamentosPorProduto: map['acompanhamentosPorProduto'] != null
-          ? (map['acompanhamentosPorProduto'] as Map<String, dynamic>).map(
-            (key, value) => MapEntry(
-          key,
-          List<Map<String, dynamic>>.from(value)
-              .map((aMap) => Acompanhamento.fromMap(aMap, aMap['id'] ?? ''))
-              .toList(),
-        ),
-      )
+      produto: produto,
+      quantidade: (map['quantidade'] ?? 1).toDouble(),
+      observacao: map['observacao'],
+      preco: precoItem,
+      acompanhamentos: acompanhamentos,
+      acompanhamentosPorProduto: acompanhamentosPorProduto,
+      precoUnitarioCustom: (map['precoUnitarioCustom'] != null)
+          ? (map['precoUnitarioCustom'] as num).toDouble()
           : null,
     );
   }
+
 
 
   Map<String, dynamic> toMap() {
@@ -88,11 +108,9 @@ class ItemCarrinho {
       'produtoId': produto.id,
       'nome': produto.nome,
       'quantidade': quantidade,
-      'precoUnitario': produto.preco,
+      'preco': preco,
+      'precoUnitario': precoUnitarioCustom,
       'observacao': observacao,
-      'precoEstimado': precoEstimado,
-      'totalEstimado': totalEstimado,
-      'valorFinal': valorFinal,
       'acompanhamentos': acompanhamentos != null
           ? acompanhamentos!.map((a) => a.toMap()).toList()
           : [],

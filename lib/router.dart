@@ -4,8 +4,8 @@ import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart'
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
 import 'package:padariavinhos/pages/admin/cadastro_acompanhamento_page.dart';
-import 'package:padariavinhos/pages/conclusao_pedido.dart';
-import 'package:padariavinhos/pages/fazer_pedido_page.dart';
+import 'package:padariavinhos/pages/conclusao_pedido/conclusao_pedido_page.dart';
+import 'package:padariavinhos/pages/fazer_pedido/fazer_pedido_page.dart';
 import 'package:padariavinhos/pages/login_page.dart';
 import 'package:padariavinhos/pages/menuinicial_page.dart';
 import 'package:padariavinhos/pages/offline.dart';
@@ -13,7 +13,7 @@ import 'package:padariavinhos/pages/opcoes_page.dart';
 import 'package:padariavinhos/pages/quem_somos_page.dart';
 import 'package:padariavinhos/pages/signup_page.dart';
 import 'package:padariavinhos/pages/splash_screen.dart';
-import 'package:padariavinhos/pages/cadastro_produto_page.dart';
+import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:padariavinhos/pages/admin/menu_admin.dart';
 import 'package:padariavinhos/services/auth_notifier.dart';
 import 'package:padariavinhos/services/carrinhos_provider.dart';
@@ -223,17 +223,16 @@ GoRouter createRouter(AuthNotifier authNotifier) {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNavItem(context, Icons.home, 'Menu', '/menu', currentIndex == 0),
-                    _buildNavItem(context, Icons.receipt, 'Pedidos', '/meuspedidos', currentIndex == 1),
+                    _buildNavItem(context, Icons.home, '/menu', currentIndex == 0),
+                    _buildNavItem(context, Icons.receipt, '/meuspedidos', currentIndex == 1),
                     SizedBox(width: 70), // Espaço para o botão central
-                    _buildNavItem(context, Icons.person, 'Opções', '/opcoes', currentIndex == 3),
+                    _buildNavItem(context, Icons.person, '/opcoes', currentIndex == 3),
                     Consumer<CarrinhoProvider>(
                       builder: (_, carrinho, __) {
                         final temItens = carrinho.itens.isNotEmpty;
                         return _buildNavItem(
                           context,
                           Icons.shopping_cart,
-                          'Carrinho',
                           '/conclusao-pedido',
                           currentIndex == 4,
                           badge: temItens,
@@ -274,12 +273,14 @@ GoRouter createRouter(AuthNotifier authNotifier) {
   );
 }
 
-Widget _buildNavItem(BuildContext context, IconData icon, String label, String path, bool selected, {bool badge = false}) {
+Widget _buildNavItem(BuildContext context, IconData icon, String path, bool selected, {String? label, bool badge = false}) {
   return InkWell(
     onTap: () => context.go(path),
     child: Column(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: label == null
+          ? MainAxisAlignment.center
+          : MainAxisAlignment.start,
       children: [
         Stack(
           clipBehavior: Clip.none,
@@ -305,7 +306,14 @@ Widget _buildNavItem(BuildContext context, IconData icon, String label, String p
               )
           ],
         ),
-        Text(label, style: TextStyle(color: selected ? Colors.red : Colors.grey, fontSize: 12)),
+        if (label != null)
+          Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.red : Colors.grey,
+              fontSize: 12,
+            ),
+          ),
       ],
     ),
   );

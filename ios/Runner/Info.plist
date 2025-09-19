@@ -45,5 +45,25 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- 🔹 Permissões equivalentes às do AndroidManifest.xml -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>O app precisa de acesso ao Bluetooth para conectar à impressora.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>O app precisa de acesso ao Bluetooth para comunicação.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>O app precisa acessar a câmera para capturar imagens.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O app precisa acessar suas fotos para upload de imagens.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>O app pode usar identificadores para personalizar notificações e relatórios.</string>
+
+	<!-- 🔹 Habilitar background modes (para Bluetooth e notificações) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

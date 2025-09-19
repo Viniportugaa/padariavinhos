@@ -3,6 +3,10 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import { getUserTokens } from "./utils";
 
+const pedidoId = event.params.pedidoId;
+const pedidoData = snapshot.data();
+const numeroPedido = pedidoData?.numeroPedido ?? pedidoId;
+
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -44,18 +48,18 @@ export const notifyAdminNewPedido = onDocumentCreated(
         return;
       }
 
-      const messagePayload = {
-        notification: {
-          title: "Novo pedido recebido",
-          body: `Pedido ${pedidoId} foi criado.`,
-        },
-        android: {
-          notification: {
-            channelId: "pedidos_channel",
-            sound: "default",
-          },
-        },
-      };
+const messagePayload = {
+  notification: {
+    title: "Novo pedido recebido",
+    body: `Pedido nº ${numeroPedido} foi criado.`,
+  },
+  android: {
+    notification: {
+      channelId: "pedidos_channel",
+      sound: "default",
+    },
+  },
+};
 
       const messaging = admin.messaging();
       const BATCH_SIZE = 500;

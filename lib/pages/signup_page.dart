@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padariavinhos/services/cep_service.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/services/notification_service.dart';
 
@@ -125,11 +124,10 @@ class _SignUpPageState extends State<SignUpPage> {
   void initState() {
     super.initState();
 
-    // Sempre que o usuário digitar no CEP, escutamos
     cepController.addListener(() {
       final cep = cepController.text.trim();
       if (cep.length == 8 && !isLoadingCep) {
-        buscarEnderecoPorCep(cep); // já preenche o endereço
+        buscarEnderecoPorCep(cep);
       }
     });
   }

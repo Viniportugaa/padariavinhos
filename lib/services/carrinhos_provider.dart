@@ -35,8 +35,7 @@ class CarrinhoProvider extends ChangeNotifier {
         observacao: observacao,
         acompanhamentos: acompanhamentos ?? [],
         acompanhamentosPorProduto: acompanhamentosPorProduto,
-        precoEstimado: produto.preco,
-        totalEstimado: produto.preco * quantidade,
+        preco: produto.preco,
       );
       _itens.add(novoItem);
     }

@@ -9,39 +9,30 @@ import 'package:intl/intl.dart';
 class PedidoProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final BlueThermalPrinter printer = BlueThermalPrinter.instance;
-
-  /// Subtotal e total podem ser calculados sem depender de pedido fixo
-  double subtotal(Pedido pedido) => pedido.itens.fold<double>(
-      0.0, (sum, item) => sum + (item.subtotal ?? 0.0));
-
-  double totalComFrete(Pedido pedido) {
-    final totalBase = pedido.valorAjustado && pedido.totalFinal != null
-        ? pedido.totalFinal!
-        : subtotal(pedido);
-    return totalBase + (pedido.frete ?? 0);
-  }
+  double subtotal(Pedido pedido) => pedido.subtotal;
+  double totalComFrete(Pedido pedido) => pedido.totalComFrete;
 
   void atualizarItemPedidoPorIndice({
     required Pedido pedido,
     required int index,
-    required double quantidade,
+    double? quantidade,
+    double? precoUnitarioCustom,
   }) {
     if (index < 0 || index >= pedido.itens.length) return;
-    pedido.itens[index].quantidade = quantidade;
+
+    final item = pedido.itens[index];
+
+    // Atualiza quantidade se fornecida
+    if (quantidade != null) item.quantidade = quantidade;
+
+    // Atualiza preço customizado se fornecido
+    if (precoUnitarioCustom != null) {
+      item.precoUnitarioCustom = precoUnitarioCustom > 0 ? precoUnitarioCustom : null;
+    }
+
     notifyListeners();
   }
 
-  /// Atualiza status de um pedido específico
-  Future<void> editar(Pedido pedido) async {
-    if (pedido.status == 'pendente') {
-      await _firestore
-          .collection('pedidos')
-          .doc(pedido.id)
-          .update({'status': 'em preparo'});
-      pedido.status = 'em preparo';
-      notifyListeners();
-    }
-  }
 
   Future<void> finalizar(Pedido pedido) async {
     if (pedido.impresso == true) {
@@ -65,6 +56,17 @@ class PedidoProvider extends ChangeNotifier {
     // Atualiza o objeto local
     pedido.status = 'cancelado';
     notifyListeners();
+  }
+
+  Future<void> editar(Pedido pedido) async {
+    if (pedido.status == 'pendente') {
+      await _firestore
+          .collection('pedidos')
+          .doc(pedido.id)
+          .update({'status': 'em preparo'});
+      pedido.status = 'em preparo';
+      notifyListeners();
+    }
   }
   /// Impressão via bluetooth
   Future<void> imprimir(Pedido pedido, User usuario, BuildContext context) async {
@@ -115,6 +117,8 @@ class PedidoProvider extends ChangeNotifier {
       printer.printCustom("Padaria Vinho's", 3, 1);
       printer.printCustom("Pedido num. ${pedido.numeroPedido}", 2, 0);
       printer.printNewLine();
+      printer.printCustom("DATA ${pedido.dataHoraEntrega}", 2, 0);
+      printer.printNewLine();
       printer.printLeftRight("Cliente:", pedido.nomeUsuario, 1);
       printer.printLeftRight("Telefone:", pedido.telefone, 1);
       printer.printCustom("Endereco:", 1, 0);
@@ -127,7 +131,7 @@ class PedidoProvider extends ChangeNotifier {
         final prefixo = item.produto.vendidoPorPeso
             ? "${item.quantidade.toStringAsFixed(2)}/Kg"
             : "${item.quantidade}x";
-        final preco = (item.valorFinal ?? item.produto.preco);
+        final preco = (item.precoUnitarioCustom ?? item.produto.preco);
         final subtotalItem = preco * item.quantidade;
 
         printer.printLeftRight(

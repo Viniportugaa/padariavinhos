@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +15,14 @@ class MenuInicial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
 
     return Scaffold(
       floatingActionButton: null,
@@ -26,10 +33,10 @@ class MenuInicial extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF2E7D32), // verde escuro
-              Colors.black87,
-              Colors.black87,
-              Color(0xFFD32F2F), // vermelho escuro
+              Colors.red,
+              Colors.black,
+              Colors.black,
+              Colors.green,
             ],
           ),
         ),
@@ -42,11 +49,11 @@ class MenuInicial extends StatelessWidget {
                 children: [
                   _buildLogo(context, screenHeight),
                   const SizedBox(height: 40),
-                  _buildGlassBotao(context, 'Faça seu pedido', Colors.green, '/pedido', largura: screenWidth),
-                  _buildGlassBotao(context, 'Veja seus pedidos', Colors.red, '/meuspedidos', largura: screenWidth),
-                  _buildGlassBotao(context, 'Sua Conta', Colors.green, '/opcoes', largura: screenWidth),
-                  _buildGlassBotao(context, 'Quem Somos', Colors.red, '/quem-somos', largura: screenWidth, pequeno: true),
-                  _buildGlassBotao(context, 'SAIR', Colors.grey[850]!, null, isLogout: true, largura: screenWidth),
+                  _buildMenuBotao(context, 'Faça seu pedido', Icons.shopping_cart, Colors.green, '/pedido', largura: screenWidth),
+                  _buildMenuBotao(context, 'Veja seus pedidos', Icons.receipt_long, Colors.red, '/meuspedidos', largura: screenWidth),
+                  _buildMenuBotao(context, 'Sua Conta', Icons.person, Colors.green, '/opcoes', largura: screenWidth),
+                  _buildMenuBotao(context, 'Quem Somos', Icons.info, Colors.red, '/quem-somos', largura: screenWidth),
+                  _buildMenuBotao(context, 'SAIR', Icons.logout, Colors.grey[850]!, null, isLogout: true, largura: screenWidth),
                   const SizedBox(height: 40),
                   const AuthStatusPanel(),
                 ],
@@ -71,19 +78,19 @@ class MenuInicial extends StatelessWidget {
     );
   }
 
-  Widget _buildGlassBotao(
+  Widget _buildMenuBotao(
       BuildContext context,
       String texto,
+      IconData icone,
       Color cor,
       String? rota, {
-        bool pequeno = false,
         bool isLogout = false,
         required double largura,
       }) {
-    final buttonWidth = pequeno ? largura * 0.5 : largura * 0.8;
+    final buttonWidth = largura * 0.85;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: GestureDetector(
         onTap: () async {
           if (isLogout) {
@@ -92,94 +99,116 @@ class MenuInicial extends StatelessWidget {
             context.push(rota);
           }
         },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              width: buttonWidth,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              decoration: BoxDecoration(
-                color: cor.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+        child: Container(
+          width: buttonWidth,
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isLogout
+                  ? [Colors.grey[700]!, Colors.grey[800]!]
+                  : [cor.withOpacity(0.9), cor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: cor.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-              alignment: Alignment.center,
-              child: Text(
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icone,
+                color: Colors.white,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Text(
                 texto,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                   letterSpacing: 0.5,
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
+
   void _confirmarLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirmação'),
-        content: const Text('Tem certeza que deseja sair?'),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(),
-            child: const Text('Cancelar'),
+      builder: (dialogContext) =>
+          AlertDialog(
+            title: const Text('Confirmação'),
+            content: const Text('Tem certeza que deseja sair?'),
+            actions: [
+              TextButton(
+                onPressed: () => dialogContext.pop(),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final auth = Provider.of<AuthNotifier>(
+                      context, listen: false);
+
+                  // Remove FCM token
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user != null) {
+                    final fcmToken = await FirebaseMessaging.instance
+                        .getToken();
+                    if (fcmToken != null) {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('tokens')
+                          .doc(fcmToken)
+                          .delete()
+                          .catchError((e) =>
+                          print('Erro ao remover token FCM: $e'));
+                    }
+                    if (!kIsWeb) {
+                      // Unsubscribe de tópicos apenas em mobile
+                      List<String> topicos = [
+                        'promocoes',
+                        'novidades'
+                      ]; // adicione seus tópicos
+                      for (var topic in topicos) {
+                        await FirebaseMessaging.instance
+                            .unsubscribeFromTopic(topic)
+                            .catchError((e) =>
+                            print('Erro ao desinscrever do tópico $topic: $e'));
+                      }
+                    } else {
+                      print(
+                          '⚠️ unsubscribeFromTopic não é suportado no Web. Gerencie via Admin SDK.');
+                    }
+                  }
+
+                  // Logout do app
+                  await auth.logout();
+
+                  dialogContext.pop();
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    if (context.mounted) {
+                      context.go('/splash');
+                    }
+                  });
+                },
+                child: const Text('Sair'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              final auth = Provider.of<AuthNotifier>(context, listen: false);
-
-              // Remove FCM token
-              final user = FirebaseAuth.instance.currentUser;
-              if (user != null) {
-                final fcmToken = await FirebaseMessaging.instance.getToken();
-                if (fcmToken != null) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .collection('tokens')
-                      .doc(fcmToken)
-                      .delete()
-                      .catchError((e) => print('Erro ao remover token FCM: $e'));
-                }
-                // Unsubscribe de tópicos
-                List<String> topicos = ['promocoes', 'novidades']; // adicione seus tópicos aqui
-                for (var topic in topicos) {
-                  await FirebaseMessaging.instance
-                      .unsubscribeFromTopic(topic)
-                      .catchError((e) => print('Erro ao desinscrever do tópico $topic: $e'));
-                }
-              }
-
-              // Logout do app
-              await auth.logout();
-
-              dialogContext.pop();
-              Future.delayed(const Duration(milliseconds: 300), () {
-                if (context.mounted) {
-                  context.go('/splash');
-                }
-              });
-            },
-            child: const Text('Sair'),
-          ),
-
-        ],
-      ),
     );
   }
 }

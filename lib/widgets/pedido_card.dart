@@ -182,7 +182,7 @@ class _PedidoCardState extends State<PedidoCard>
                           width: 50,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
@@ -229,31 +229,9 @@ class _PedidoCardState extends State<PedidoCard>
                                         fontSize: 16)),
                                 const SizedBox(height: 4),
 
-                                // Quantidade editável se vendido por peso
                                 if (isVendidoPorPeso)
-                                  TextFormField(
-                                    initialValue: item.quantidade.toString(),
-                                    keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Quantidade (kg)',
-                                    ),
-                                    enabled: pedido.status == 'pendente',
-                                    onChanged: (val) {
-                                      final kg = double.tryParse(
-                                          val.replaceAll(',', '.')) ??
-                                          0;
-                                      if (pedido.status != 'pendente') return;
-
-                                      provider.atualizarItemPedidoPorIndice(
-                                        pedido: pedido,
-                                        index: index,
-                                        quantidade: kg,
-                                      );
-
-                                      item.quantidade = kg;
-                                    },
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                   ),
 
                                 if (!isVendidoPorPeso)
@@ -261,18 +239,20 @@ class _PedidoCardState extends State<PedidoCard>
                                       'Quantidade: ${item.quantidade % 1 == 0 ? item.quantidade.toInt() : item.quantidade}'),
 
                                 Text(
-                                    "Preço Unitário: R\$ ${item.produto.preco.toStringAsFixed(2)}"),
-                                if (item.acompanhamentos != null &&
-                                    item.acompanhamentos!.isNotEmpty)
-                                  Text(
-                                      "Acompanhamentos: ${item.acompanhamentos!.map((a) => a.nome).join(', ')}"),
+                                  "Preço Unitário: R\$ ${(item.preco).toStringAsFixed(2)}",
+                                ),
+
+                                if (item.acompanhamentos != null && item.acompanhamentos!.isNotEmpty)
+                                  Text("Acompanhamentos: ${item.acompanhamentos!.map((a) => a.nome).join(', ')}"),
+
                                 if (item.observacao?.isNotEmpty ?? false)
                                   Text("Obs: ${item.observacao}"),
+
                                 const SizedBox(height: 4),
+
                                 Text(
                                   "Subtotal: R\$ ${item.subtotal.toStringAsFixed(2)}",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -281,7 +261,7 @@ class _PedidoCardState extends State<PedidoCard>
                       }).toList(),
 
                       const Divider(thickness: 1.2, height: 24),
-                      _buildTotalRow("Total", provider.totalComFrete(pedido), true),
+                      _buildTotalRow("Total", pedido.totalComFrete, true),
                       const SizedBox(height: 8),
 
                       // Forma de pagamento

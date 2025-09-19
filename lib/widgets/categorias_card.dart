@@ -49,16 +49,8 @@ class CategoriaCard extends StatelessWidget {
 
   Color _getColorForCategoria(String nome) {
     switch (nome.toLowerCase()) {
-      case 'Bolos': return Colors.pink[200]!;
-      case 'paes': return Colors.brown[200]!;
-      case 'sucos': return Colors.green[200]!;
-      case 'lanches': return Colors.yellow[200]!;
-      case 'refrigerante': return Colors.blue[200]!;
-      case 'doce': return Colors.purple[200]!;
-      case 'salgados': return Colors.red[200]!;
-      case 'festividade': return Colors.orange[200]!;
-      case 'pratos': return Colors.teal[200]!;
-      default: return Colors.red[700]!;
+      case 'favoritos': return Colors.pink[500]!;
+      default: return Colors.orange;
     }
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/produto.dart';
-import '../services/product_service.dart';
+import '../../services/product_service.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 
 class CadastroProdutoPage extends StatefulWidget {
@@ -19,6 +19,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   final _nomeController  = TextEditingController();
   final _descController  = TextEditingController();
   final _precoController = TextEditingController();
+  final _valorAproxController = TextEditingController();
   bool  _disponivel = true;
   bool _vendidoPorPeso = false;
   bool  _isSaving   = false;
@@ -102,6 +103,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     _nomeController.dispose();
     _descController.dispose();
     _precoController.dispose();
+    _valorAproxController.dispose();
     super.dispose();
   }
 
@@ -141,6 +143,27 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
                     value: _vendidoPorPeso,
                     onChanged: (val) => setState(() => _vendidoPorPeso = val),
                   ),
+                  if (_vendidoPorPeso)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextFormField(
+                        controller: _valorAproxController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Valor Aproximado',
+                          prefixText: 'R\$ ',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (v) {
+                          if (_vendidoPorPeso && (v == null || v.isEmpty)) {
+                            return 'Digite o valor aproximado';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   _buildDropdown(),
                   const SizedBox(height: 16),

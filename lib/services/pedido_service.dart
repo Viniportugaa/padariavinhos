@@ -43,7 +43,6 @@ class PedidoService {
 
     final userRef = FirebaseFirestore.instance.collection('users').doc(pedido.userId);
     final userSnapshot = await userRef.get();
-
     final userDoc = userSnapshot.data();
     if (userDoc == null) throw Exception('Usuário não encontrado');
 
@@ -68,12 +67,10 @@ class PedidoService {
         impresso: pedido.impresso,
         endereco: pedido.endereco,
         formaPagamento:pedido.formaPagamento,
-        totalFinal: pedido.totalFinal ?? pedido.totalComFrete,
-        valorAjustado: pedido.valorAjustado,
+        totalFinal: pedido.totalComFrete,
         frete: pedido.frete,
         tipoEntrega: pedido.tipoEntrega,
-        dataEntrega: dataEntrega,
-        horaEntrega: combineDateAndTime(dataEntrega, horaEntrega),
+        dataHoraEntrega: pedido.dataHoraEntrega,
       );
 
       transaction.set(docRef, pedidoComId.toMap());

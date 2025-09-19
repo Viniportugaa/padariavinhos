@@ -15,12 +15,9 @@ class Pedido {
   bool impresso;
   final String? endereco;
   final List<String> formaPagamento;
-  final bool valorAjustado;
   final double frete;
-
   final String tipoEntrega;
-  final DateTime? dataEntrega;
-  final DateTime? horaEntrega;
+  final DateTime? dataHoraEntrega;
 
   Pedido({
     required this.id,
@@ -35,11 +32,9 @@ class Pedido {
     this.impresso = false,
     this.endereco,
     required this.formaPagamento,
-    this.valorAjustado = false,
     this.frete = 4.0,
     required this.tipoEntrega,
-    this.dataEntrega,
-    this.horaEntrega,
+    this.dataHoraEntrega,
 
 
   });
@@ -78,15 +73,12 @@ class Pedido {
       impresso: map['impresso'] ?? false,
       endereco: map['endereco'],
       formaPagamento: List<String>.from(map['formaPagamento'] ?? ['Pix']),
-      valorAjustado: map['valorAjustado'] ?? false,
       frete: (map['frete'] != null) ? (map['frete'] as num).toDouble() : 4.0, // 🔹 se não tiver salvo, assume 4.0
       tipoEntrega: map['tipoEntrega'] ?? 'entrega',
-      dataEntrega: map['dataEntrega'] != null
-          ? (map['dataEntrega'] as Timestamp).toDate()
+      dataHoraEntrega: map['dataHoraEntrega'] != null
+          ? (map['dataHoraEntrega'] as Timestamp).toDate()
           : null,
-      horaEntrega: map['horaEntrega'] != null
-          ? (map['horaEntrega'] as Timestamp).toDate()
-          : null,
+
     );
   }
 
@@ -106,10 +98,8 @@ class Pedido {
       'impresso': impresso,
       'endereco': endereco,
       'formaPagamento': formaPagamento,
-      'valorAjustado': valorAjustado,
       'tipoEntrega': tipoEntrega,
-      'dataEntrega': dataEntrega != null ? Timestamp.fromDate(dataEntrega!) : null,
-      'horaEntrega': horaEntrega != null ? Timestamp.fromDate(horaEntrega!) : null,
+      'dataHoraEntrega': dataHoraEntrega != null ? Timestamp.fromDate(dataHoraEntrega!) : null,
     };
 
   }

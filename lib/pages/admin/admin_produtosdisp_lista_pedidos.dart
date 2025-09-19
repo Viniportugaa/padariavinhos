@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
-import 'package:padariavinhos/pages/cadastro_produto_page.dart';
+import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 
@@ -140,7 +140,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                       'category': categoria,
                       'disponivel': disponivel,
                       'vendidoPorPeso': vendidoPorPeso,
-                      'imageUrl': produto.imageUrl, // mantém as imagens já salvas
+                      'imageUrl': produto.imageUrl,
                     });
 
                     Navigator.of(context).pop();

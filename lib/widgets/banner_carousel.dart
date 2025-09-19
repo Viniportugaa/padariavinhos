@@ -14,50 +14,94 @@ class _BannerCarouselState extends State<BannerCarousel> {
   final CollectionReference bannersRef =
   FirebaseFirestore.instance.collection('banners');
 
+  final ScrollController _scrollController = ScrollController();
 
+  void _scrollLeft() {
+    _scrollController.animateTo(
+      _scrollController.offset - 250, // desliza 1 item (ajuste se quiser)
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollRight() {
+    _scrollController.animateTo(
+      _scrollController.offset + 250,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 180,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: bannersRef.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text('Erro ao carregar banners.'));
-          }
+      height: 200, // altura aumentada pra caber botões
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          StreamBuilder<QuerySnapshot>(
+            stream: bannersRef.snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text('Erro ao carregar banners.'));
+              }
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final banners = snapshot.data!.docs
-              .map((doc) =>
-              BannerModel.fromMap(doc.data()! as Map<String, dynamic>, doc.id))
-              .toList();
+              final banners = snapshot.data!.docs
+                  .map((doc) => BannerModel.fromMap(
+                  doc.data()! as Map<String, dynamic>, doc.id))
+                  .toList();
 
-          if (banners.isEmpty) {
-            return const Center(child: Text('Nenhum banner disponível'));
-          }
+              if (banners.isEmpty) {
+                return const Center(child: Text('Nenhum banner disponível'));
+              }
 
-          return ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: banners.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final banner = banners[index];
-              return _BannerItem(
-                banner: banner,
-                onTap: () {
-                  if (banner.produtoId != null) {
-                    widget.onBannerTap(banner.produtoId!);
-                  }
+              return ListView.separated(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 48),
+                itemCount: banners.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final banner = banners[index];
+                  return _BannerItem(
+                    banner: banner,
+                    onTap: () {
+                      if (banner.produtoId != null) {
+                        widget.onBannerTap(banner.produtoId!);
+                      }
+                    },
+                  );
                 },
               );
             },
-          );
-        },
+          ),
+          // Botão Esquerda
+          Positioned(
+            left: 0,
+            child: IconButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(Colors.black45),
+              ),
+              onPressed: _scrollLeft,
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            ),
+          ),
+          // Botão Direita
+          Positioned(
+            right: 0,
+            child: IconButton(
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(Colors.black45),
+              ),
+              onPressed: _scrollRight,
+              icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }

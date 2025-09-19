@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
+import '../widgets/cep_text_field.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -26,6 +27,7 @@ class _OpcoesPageState extends State<OpcoesPage> {
 
   String emailAutenticado = '';
   late String uid;
+  bool cepValidado = false;
 
   @override
   void initState() {
@@ -176,6 +178,10 @@ class _OpcoesPageState extends State<OpcoesPage> {
   Future<void> updateUserData() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!cepValidado) {
+      DialogHelper.showTemporaryToast(context, "Valide o CEP antes de salvar.");
+      return;
+    }
     try {
       final cepRaw = _onlyDigits(cepController.text.trim());
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
@@ -249,11 +255,12 @@ class _OpcoesPageState extends State<OpcoesPage> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextFormField(
-                    controller: addressController,
-                    label: "Endereço",
-                    icon: Icons.home,
-                    textInputAction: TextInputAction.next,
+                  CepTextField(
+                    controller: cepController,
+                    addressController: addressController,
+                    onCepValidated: (valido) {
+                      setState(() => cepValidado = valido);
+                    },
                   ),
                   const SizedBox(height: 16),
                   _buildTextFormField(
@@ -262,6 +269,14 @@ class _OpcoesPageState extends State<OpcoesPage> {
                     icon: Icons.format_list_numbered,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextFormField(
+                    controller: addressController,
+                    label: "Endereço",
+                    icon: Icons.home,
+                    requiredField: false,
+                    readOnly: true
                   ),
                   const SizedBox(height: 16),
                   _buildTextFormField(
@@ -357,12 +372,14 @@ class _OpcoesPageState extends State<OpcoesPage> {
     String? Function(String?)? validator,
     bool requiredField = true,
     TextInputAction textInputAction = TextInputAction.next,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       textInputAction: textInputAction,
+      readOnly: readOnly,
       validator: validator ??
               (value) {
             if (requiredField && (value == null || value.trim().isEmpty)) {
