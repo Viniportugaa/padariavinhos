@@ -1,17 +1,16 @@
-// utils.ts
-import * as admin from "firebase-admin";
-
 export function getUserTokens(userDoc: FirebaseFirestore.DocumentSnapshot): string[] {
   const data = userDoc.data();
   if (!data) return [];
 
+  let tokens: string[] = [];
+
   if (Array.isArray(data.fcmTokens) && data.fcmTokens.length > 0) {
-    return data.fcmTokens;
+    tokens.push(...data.fcmTokens);
   }
 
   if (typeof data.fcmToken === "string" && data.fcmToken.trim() !== "") {
-    return [data.fcmToken];
+    tokens.push(data.fcmToken);
   }
 
-  return [];
+  return Array.from(new Set(tokens)); // remove duplicados
 }

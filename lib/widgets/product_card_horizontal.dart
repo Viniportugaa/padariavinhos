@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/notifiers/favoritos_provider.dart';
+import 'package:padariavinhos/provider/favoritos_provider.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:padariavinhos/services/firebase_storage_service.dart'; // função getProdutoImageUrl

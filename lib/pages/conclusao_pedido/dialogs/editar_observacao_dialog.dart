@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 
 class EditarObservacaoDialog {
   static void show(BuildContext context, String produtoId, String? observacaoAtual) {

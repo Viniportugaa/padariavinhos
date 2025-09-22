@@ -1,10 +1,18 @@
 // index.ts
 import * as admin from "firebase-admin";
-admin.initializeApp();  // Inicialização única
+admin.initializeApp();
 
-// import { notifyPedidoStatusChange } from "./pedidostatus";
-// import { notifyProdutoDisponivel } from "./produtonovodisp";
+// Imports
 import { notifyAdminNewPedido } from "./adminovopedido";
+import { clearTokensOnRoleChange } from "./limparTokenstrocaRole";
+import { notifyPedidoCliente } from "./notifyPedidoCliente";
 
-export { notifyAdminNewPedido } from "./adminovopedido";
-export { clearTokensOnRoleChange } from "./limparTokenstrocaRole";
+// Exports centralizados
+export {
+  notifyAdminNewPedido,
+  clearTokensOnRoleChange,
+  notifyPedidoCliente,
+
+  // notifyPedidoStatusChange,
+  // notifyProdutoDisponivel,
+};

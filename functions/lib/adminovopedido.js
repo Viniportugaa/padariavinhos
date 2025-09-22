@@ -34,10 +34,11 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notifyAdminNewPedido = void 0;
+// src/adminovopedido.ts
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-functions/v2/firestore");
 const logger = __importStar(require("firebase-functions/logger"));
-const utils_1 = require("./utils");
+const sendWhatsAppMessage_1 = require("./sendWhatsAppMessage"); // ajuste o caminho se necessário
 if (!admin.apps.length) {
     admin.initializeApp();
 }
@@ -48,9 +49,25 @@ exports.notifyAdminNewPedido = (0, firestore_1.onDocumentCreated)({ document: "p
         logger.error("[notifyAdminNewPedido] Snapshot vazio para novo pedido:", pedidoId);
         return;
     }
+    const pedidoData = snapshot.data();
+    const numeroPedido = pedidoData?.numeroPedido ?? pedidoId;
+    const clienteNome = pedidoData?.nomeUsuario ?? "Cliente";
+    const clienteTelefone = pedidoData?.telefone;
     logger.info("[notifyAdminNewPedido] Novo pedido criado:", pedidoId);
     try {
-        // Busca todos os admins
+        // Envia WhatsApp para o cliente
+        if (clienteTelefone) {
+            const telefoneFormatado = clienteTelefone.startsWith("+")
+                ? clienteTelefone
+                : `+${clienteTelefone.replace(/\D/g, "")}`;
+            const mensagem = `Olá ${clienteNome}, seu pedido nº ${numeroPedido} foi recebido com sucesso! 🍞🥖`;
+            await (0, sendWhatsAppMessage_1.sendWhatsAppMessage)(telefoneFormatado, mensagem);
+            logger.info(`[notifyAdminNewPedido] WhatsApp enviado para ${telefoneFormatado}`);
+        }
+        else {
+            logger.warn(`[notifyAdminNewPedido] Cliente sem telefone cadastrado para pedido ${numeroPedido}`);
+        }
+        // Notifica todos os admins via FCM
         const adminSnapshot = await admin.firestore()
             .collection("users")
             .where("role", "==", "admin")
@@ -59,9 +76,12 @@ exports.notifyAdminNewPedido = (0, firestore_1.onDocumentCreated)({ document: "p
         const tokens = [];
         const tokenToAdminMap = {};
         adminSnapshot.forEach((doc) => {
-            const docTokens = (0, utils_1.getUserTokens)(doc);
-            docTokens.forEach(token => tokenToAdminMap[token] = doc.id);
-            tokens.push(...docTokens);
+            const data = doc.data();
+            const docTokens = data?.fcmTokens ?? [];
+            docTokens.forEach(token => {
+                tokenToAdminMap[token] = doc.id;
+                tokens.push(token);
+            });
         });
         const uniqueTokens = Array.from(new Set(tokens));
         if (uniqueTokens.length === 0) {
@@ -71,7 +91,7 @@ exports.notifyAdminNewPedido = (0, firestore_1.onDocumentCreated)({ document: "p
         const messagePayload = {
             notification: {
                 title: "Novo pedido recebido",
-                body: `Pedido ${pedidoId} foi criado.`,
+                body: `Pedido nº ${numeroPedido} foi criado.`,
             },
             android: {
                 notification: {
@@ -90,6 +110,7 @@ exports.notifyAdminNewPedido = (0, firestore_1.onDocumentCreated)({ document: "p
                 tokens: batchTokens,
             });
             logger.info(`[notifyAdminNewPedido] Envio concluído: sucesso=${response.successCount}, falhas=${response.failureCount}`);
+            // Remove tokens inválidos do Firestore
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
                     const err = resp.error;
@@ -97,16 +118,17 @@ exports.notifyAdminNewPedido = (0, firestore_1.onDocumentCreated)({ document: "p
                     const adminId = tokenToAdminMap[token];
                     logger.error(`[notifyAdminNewPedido] Falha ao enviar para token ${token}:`, err);
                     if (err &&
-                        (err.code === 'messaging/registration-token-not-registered' ||
-                            err.code === 'messaging/invalid-argument') &&
+                        (err.code === "messaging/registration-token-not-registered" ||
+                            err.code === "messaging/invalid-argument") &&
                         adminId) {
                         admin.firestore()
-                            .collection('users')
+                            .collection("users")
                             .doc(adminId)
-                            .collection('tokens')
-                            .doc(token)
-                            .delete()
-                            .catch(e => logger.error("Erro ao remover token inválido:", e));
+                            .update({
+                            fcmTokens: admin.firestore.FieldValue.arrayRemove(token),
+                        })
+                            .then(() => logger.info(`[notifyAdminNewPedido] Token inválido removido do admin ${adminId}`))
+                            .catch((e) => logger.error("[notifyAdminNewPedido] Erro ao remover token inválido:", e));
                     }
                 }
             });

@@ -20,22 +20,12 @@ export const clearTokensOnRoleChange = onDocumentUpdated(
 
     logger.info(`[clearTokensOnRoleChange] Usuário ${userId} mudou de role: ${roleBefore} -> ${roleAfter}`);
 
-    // Apaga todos os tokens antigos do usuário
-    const tokensCol = admin.firestore()
+    // Apaga o array de tokens
+    await admin.firestore()
       .collection("users")
       .doc(userId)
-      .collection("tokens");
-
-    const tokensSnap = await tokensCol.get();
-
-    if (tokensSnap.empty) {
-      logger.info(`[clearTokensOnRoleChange] Nenhum token para limpar do usuário ${userId}`);
-      return;
-    }
-
-    const batch = admin.firestore().batch();
-    tokensSnap.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
+      .update({ fcmTokens: [] })
+      .catch((e) => logger.error(`[clearTokensOnRoleChange] Erro ao limpar tokens do usuário ${userId}`, e));
 
     logger.info(`[clearTokensOnRoleChange] Tokens removidos do usuário ${userId}`);
   }

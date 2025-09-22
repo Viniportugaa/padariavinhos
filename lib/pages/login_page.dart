@@ -1,15 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:padariavinhos/pages/menuinicial_page.dart';
-import 'package:padariavinhos/pages/signup_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:io';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/services/notification_service.dart';
+import 'package:padariavinhos/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,42 +32,33 @@ class _LoginPageState extends State<LoginPage> {
 
   }
 
-
-  Future<void> loginUserWithEmailAndPassword(BuildContext context) async {
+  Future<void> loginUser(BuildContext context) async {
     if (!formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
-      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      final authService = AuthService();
+      final role = await authService.loginWithEmail(
+        emailController.text,
+        passwordController.text,
       );
 
-      final user = userCredential.user;
-      if (user == null) throw Exception("Usuário não encontrado");
-
-      final uid = user.uid;
-
-      await NotificationService.initFCM(uid);
-
-      // Busca role do usuário
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final role = userDoc.data()?['role'] ?? 'cliente';
-
       final authNotifier = context.read<AuthNotifier>();
-      await authNotifier.login(); // Atualiza estado interno
+      await authNotifier.login();
+
       if (!mounted) return;
       context.go(role == 'admin' ? '/admin' : '/menu');
 
     } on FirebaseAuthException catch (e) {
       DialogHelper.showTemporaryToast(context, e.message ?? 'Erro no login');
     } catch (e) {
-        DialogHelper.showTemporaryToast(context, 'Erro: $e');
+      DialogHelper.showTemporaryToast(context, 'Erro: $e');
     } finally {
       setState(() => isLoading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed:
-                      isLoading ? null : () => loginUserWithEmailAndPassword(context),
+                      isLoading ? null : () => loginUser(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,

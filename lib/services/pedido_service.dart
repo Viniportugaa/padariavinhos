@@ -1,21 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/pedido.dart';
-import 'package:padariavinhos/models/user.dart';
-import 'package:padariavinhos/helpers/date_utils.dart';
 import 'package:flutter/material.dart';
+
 class PedidoService {
-  final CollectionReference _pedidosRef = FirebaseFirestore.instance.collection('pedidos');
-  final DocumentReference _contadorRef = FirebaseFirestore.instance.collection('contadores').doc('pedidoCounter');
+  final CollectionReference _pedidosRef =
+  FirebaseFirestore.instance.collection('pedidos');
+  final DocumentReference _contadorRef = FirebaseFirestore.instance
+      .collection('contadores')
+      .doc('pedidoCounter');
 
   Future<int> getNextNumeroPedido() async {
     return FirebaseFirestore.instance.runTransaction<int>((transaction) async {
       final snapshot = await transaction.get(_contadorRef);
-
-      int current = 0;
-      if (snapshot.exists) {
-        current = snapshot.get('current') as int;
-      }
-
+      int current = snapshot.exists ? (snapshot.get('current') as int) : 0;
       final next = current + 1;
       transaction.set(_contadorRef, {'current': next});
       return next;
@@ -23,38 +20,38 @@ class PedidoService {
   }
 
   Stream<List<Pedido>> streamPedidosUsuario(String userId) {
-    return FirebaseFirestore.instance
-        .collection('pedidos')
+    return _pedidosRef
         .where('userId', isEqualTo: userId)
-    //.orderBy('data', descending: true)
         .snapshots()
-        .map((snapshot) =>
-        snapshot.docs
-            .map((doc) => Pedido.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) => snapshot.docs
+        .map((doc) =>
+        Pedido.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .toList());
   }
 
-
-  Future<void> criarPedido(
-      Pedido pedido, {
-        DateTime? dataEntrega,
-        TimeOfDay? horaEntrega,
-      }) async {
-
-    final userRef = FirebaseFirestore.instance.collection('users').doc(pedido.userId);
-    final userSnapshot = await userRef.get();
-    final userDoc = userSnapshot.data();
-    if (userDoc == null) throw Exception('Usuário não encontrado');
-
-    final user = User.fromMap(userDoc);
-
+  Future<void> criarPedido(Pedido pedido, {DateTime? dataEntrega, TimeOfDay? horaEntrega}) async {
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final contadorSnapshot = await transaction.get(_contadorRef);
-      int current = contadorSnapshot.exists ? contadorSnapshot.get('current') as int : 0;
+      int current =
+      contadorSnapshot.exists ? (contadorSnapshot.get('current') as int) : 0;
       final next = current + 1;
       transaction.set(_contadorRef, {'current': next});
 
       final docRef = _pedidosRef.doc();
+
+      DateTime? dataHoraEntrega;
+      if (dataEntrega != null && horaEntrega != null) {
+        dataHoraEntrega = DateTime(
+          dataEntrega.year,
+          dataEntrega.month,
+          dataEntrega.day,
+          horaEntrega.hour,
+          horaEntrega.minute,
+        );
+      } else {
+        dataHoraEntrega = pedido.dataHoraEntrega;
+      }
+
       final pedidoComId = Pedido(
         id: docRef.id,
         numeroPedido: next,
@@ -66,16 +63,17 @@ class PedidoService {
         data: pedido.data,
         impresso: pedido.impresso,
         endereco: pedido.endereco,
-        formaPagamento:pedido.formaPagamento,
-        totalFinal: pedido.totalComFrete,
+        formaPagamento: pedido.formaPagamento,
         frete: pedido.frete,
+        totalFinal: pedido.totalFinal,
         tipoEntrega: pedido.tipoEntrega,
-        dataHoraEntrega: pedido.dataHoraEntrega,
+        dataHoraEntrega: dataHoraEntrega,
       );
 
       transaction.set(docRef, pedidoComId.toMap());
     });
   }
+
   Future<void> ajustarValorPedido(String pedidoId, double novoValor) async {
     await _pedidosRef.doc(pedidoId).update({
       'totalFinal': novoValor,

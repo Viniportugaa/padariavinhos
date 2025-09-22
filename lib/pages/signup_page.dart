@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padariavinhos/services/cep_service.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/services/notification_service.dart';
+import 'package:padariavinhos/helpers/phone_helper.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -45,12 +46,19 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> saveUserData(String uid) async {
+    final formattedPhone = PhoneHelper.normalizeToInternational(telefoneController.text);
+
+    if (!PhoneHelper.isValidInternational(formattedPhone)) {
+      DialogHelper.showTemporaryToast(context, 'Telefone inválido. Use apenas números válidos.');
+      return;
+    }
+
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'uid': uid,
       'nome': nomeController.text.trim(),
       'endereco': enderecoController.text.trim(),
       'numero_endereco': numeroEnderecoController.text.trim(),
-      'telefone': telefoneController.text.trim(),
+      'telefone': formattedPhone,
       'cep': cepController.text.trim(),
       'email': emailController.text.trim(),
       'role': 'cliente',

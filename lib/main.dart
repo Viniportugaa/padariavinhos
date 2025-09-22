@@ -12,12 +12,12 @@ import 'firebase_options.dart';
 import 'package:go_router/go_router.dart';
 // Notifiers
 import 'notifiers/products_notifier.dart';
-import 'services/carrinhos_provider.dart';
-import 'services/auth_notifier.dart';
+import 'provider/carrinhos_provider.dart';
+import 'notifiers/auth_notifier.dart';
 import 'notifiers/config_notifier.dart';
 import 'router.dart';
-import 'package:padariavinhos/services/pedido_provider.dart';
-import 'package:padariavinhos/notifiers/favoritos_provider.dart';
+import 'package:padariavinhos/provider/pedido_provider.dart';
+import 'package:padariavinhos/provider/favoritos_provider.dart';
 
 /// 🔹 Handler para notificações em background/terminated
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {

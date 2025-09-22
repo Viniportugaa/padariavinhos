@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getTokensByRole = getTokensByRole;
 const admin = __importStar(require("firebase-admin"));
 async function getTokensByRole(role) {
     const snapshot = await admin.firestore()
@@ -42,9 +43,9 @@ async function getTokensByRole(role) {
     const tokens = [];
     snapshot.forEach((doc) => {
         const data = doc.data();
-        if (data?.fcmTokens && typeof data.fcmTokens === "object") {
-            tokens.push(...Object.keys(data.fcmTokens));
+        if (Array.isArray(data?.fcmTokens)) {
+            tokens.push(...data.fcmTokens);
         }
     });
-    return tokens;
+    return Array.from(new Set(tokens)); // remove duplicados
 }

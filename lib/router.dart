@@ -15,9 +15,9 @@ import 'package:padariavinhos/pages/signup_page.dart';
 import 'package:padariavinhos/pages/splash_screen.dart';
 import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:padariavinhos/pages/admin/menu_admin.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
-import 'package:padariavinhos/services/transitions.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
+import 'package:padariavinhos/helpers/transitions.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
 import 'package:padariavinhos/pages/product_detalhe_page.dart';
 import 'package:padariavinhos/pages/LGPD_page.dart';
@@ -27,6 +27,7 @@ import 'package:padariavinhos/pages/admin/abertura_page.dart';
 import 'package:padariavinhos/pages/admin/admin_banner_page.dart';
 import 'package:padariavinhos/pages/admin/admin_cria_categoria.dart';
 import 'package:padariavinhos/pages/admin/relatorio_page.dart';
+import 'package:padariavinhos/pages/admin/relatorio_cliente.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -97,6 +98,12 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         path: '/listaproduto',
         pageBuilder: (context, state) =>
             fadeTransitionPage(child: AdminProdutosPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/relatorio-clientes',
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: RelatorioClientesPage(), state: state),
       ),
 
       GoRoute(

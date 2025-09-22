@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/notifiers/products_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';

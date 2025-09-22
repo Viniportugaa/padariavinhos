@@ -1,5 +1,7 @@
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'produto.dart';
+import 'package:padariavinhos/helpers/preco_helper.dart';
+
 
 class ItemCarrinho {
   final Produto produto;
@@ -8,9 +10,6 @@ class ItemCarrinho {
   String? observacao;
   List<Acompanhamento>? acompanhamentos;
   double? precoUnitarioCustom;
-
-
-  Map<String, List<Acompanhamento>>? acompanhamentosPorProduto;
 
   late final String idUnico;
 
@@ -21,41 +20,15 @@ class ItemCarrinho {
     this.acompanhamentos = const [],
     required this.preco,
     this.precoUnitarioCustom,
-    this.acompanhamentosPorProduto,
   }) {
     idUnico = gerarIdUnico();
   }
 
   double get subtotal {
-    final valorAcomp = _calcularValorAcompanhamentos();
-    final precoUnitario = precoUnitarioCustom ?? preco;
-    return (precoUnitario * quantidade) + valorAcomp;
-  }
-
-  double _calcularValorAcompanhamentos() {
-    if (produto.category == 'Pratos') {
-      return valorAcompanhamentosPratos;
-    }
-
-    if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
-      return acompanhamentos!.fold(0.0, (soma, a) => soma + a.preco);
-    }
-
-    return 0.0;
-  }
-
-  double get valorAcompanhamentosPratos {
-    if (produto.category != 'Pratos' ||
-        acompanhamentos == null ||
-        acompanhamentos!.isEmpty) {
-      return 0.0;
-    }
-
-    if (acompanhamentos!.length <= 3) return 0.0;
-
-    final sortedPrecos = acompanhamentos!.map((a) => a.preco).toList()..sort();
-    final extras = sortedPrecos.skip(3).toList();
-    return extras.fold(0.0, (soma, preco) => soma + preco);
+    final unit = precoUnitarioCustom ??
+        PrecoHelper.calcularPrecoUnitario(
+            produto: produto, selecionados: acompanhamentos ?? []);
+    return unit * quantidade;
   }
 
   factory ItemCarrinho.fromMap(Map<String, dynamic> map) {
@@ -75,17 +48,6 @@ class ItemCarrinho {
         .toList()
         : <Acompanhamento>[];
 
-    // Cria o mapa de acompanhamentos por produto
-    final acompanhamentosPorProduto = map['acompanhamentosPorProduto'] != null
-        ? (map['acompanhamentosPorProduto'] as Map<String, dynamic>).map(
-          (key, value) => MapEntry(
-        key,
-        List<Map<String, dynamic>>.from(value)
-            .map((aMap) => Acompanhamento.fromMap(aMap, aMap['id'] ?? ''))
-            .toList(),
-      ),
-    )
-        : null;
 
     return ItemCarrinho(
       produto: produto,
@@ -93,7 +55,6 @@ class ItemCarrinho {
       observacao: map['observacao'],
       preco: precoItem,
       acompanhamentos: acompanhamentos,
-      acompanhamentosPorProduto: acompanhamentosPorProduto,
       precoUnitarioCustom: (map['precoUnitarioCustom'] != null)
           ? (map['precoUnitarioCustom'] as num).toDouble()
           : null,
@@ -114,12 +75,6 @@ class ItemCarrinho {
       'acompanhamentos': acompanhamentos != null
           ? acompanhamentos!.map((a) => a.toMap()).toList()
           : [],
-      'acompanhamentosPorProduto': acompanhamentosPorProduto != null
-          ? acompanhamentosPorProduto!.map(
-            (produtoId, lista) =>
-            MapEntry(produtoId, lista.map((a) => a.toMap()).toList()),
-      )
-          : {},
     };
   }
 
@@ -127,16 +82,6 @@ class ItemCarrinho {
     if (acompanhamentos != null && acompanhamentos!.isNotEmpty) {
       final acompIds = acompanhamentos!.map((a) => a.id).toList()..sort();
       return '${produto.id}-${acompIds.join('-')}';
-    }
-
-    if (acompanhamentosPorProduto != null &&
-        acompanhamentosPorProduto!.isNotEmpty) {
-      final comboIds = acompanhamentosPorProduto!.entries.map((e) {
-        final ids = e.value.map((a) => a.id).toList()..sort();
-        return '${e.key}:${ids.join(",")}';
-      }).toList()
-        ..sort();
-      return '${produto.id}-${comboIds.join('-')}';
     }
 
     return produto.id;
@@ -154,21 +99,6 @@ class ItemCarrinho {
     return true;
   }
 
-
-  bool _acompanhamentosPorProdutoIguais(Map<String, List<Acompanhamento>>? a, Map<String, List<Acompanhamento>>? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    if (a.length != b.length) return false;
-
-    for (var key in a.keys) {
-      final listaA = a[key];
-      final listaB = b[key];
-      if (!_acompanhamentosIguais(listaA, listaB)) return false;
-    }
-    return true;
-
-  }
-
   @override
   bool operator == (Object other) {
     if (identical(this, other)) return true;
@@ -176,8 +106,7 @@ class ItemCarrinho {
 
     return produto.id == other.produto.id &&
         observacao == other.observacao &&
-        _acompanhamentosIguais(acompanhamentos, other.acompanhamentos) &&
-        _acompanhamentosPorProdutoIguais(acompanhamentosPorProduto, other.acompanhamentosPorProduto);
+        _acompanhamentosIguais(acompanhamentos, other.acompanhamentos);
   }
 
   @override

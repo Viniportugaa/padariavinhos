@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
 
 class AuthStatusPanel extends StatelessWidget {
   const AuthStatusPanel({super.key});

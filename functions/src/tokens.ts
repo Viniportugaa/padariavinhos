@@ -1,18 +1,18 @@
 import * as admin from "firebase-admin";
 
-async function getTokensByRole(role: string): Promise<string[]> {
+export async function getTokensByRole(role: string): Promise<string[]> {
   const snapshot = await admin.firestore()
     .collection("users")
     .where("role", "==", role)
     .get();
 
   const tokens: string[] = [];
-  snapshot.forEach((doc: FirebaseFirestore.DocumentSnapshot) => {
+  snapshot.forEach((doc) => {
     const data = doc.data();
-    if (data?.fcmTokens && typeof data.fcmTokens === "object") {
-      tokens.push(...Object.keys(data.fcmTokens));
+    if (Array.isArray(data?.fcmTokens)) {
+      tokens.push(...data.fcmTokens);
     }
   });
 
-  return tokens;
+  return Array.from(new Set(tokens)); // remove duplicados
 }

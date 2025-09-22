@@ -33,28 +33,36 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearTokensOnRoleChange = void 0;
-const admin = __importStar(require("firebase-admin"));
-const firestore_1 = require("firebase-functions/v2/firestore");
+exports.notifyPedidoCliente = void 0;
+const functions = __importStar(require("firebase-functions/v2/firestore"));
 const logger = __importStar(require("firebase-functions/logger"));
-// Função dispara quando o campo "role" do user muda
-exports.clearTokensOnRoleChange = (0, firestore_1.onDocumentUpdated)({ document: "users/{userId}" }, async (event) => {
-    const before = event.data?.before;
-    const after = event.data?.after;
-    const userId = event.params.userId;
-    if (!before || !after)
+const sendWhatsAppMessage_1 = require("./sendWhatsAppMessage");
+// Trigger Firestore v2
+exports.notifyPedidoCliente = functions.onDocumentCreated("pedidos/{pedidoId}", async (event) => {
+    const snapshot = event.data;
+    if (!snapshot)
         return;
-    const roleBefore = before.data()?.role;
-    const roleAfter = after.data()?.role;
-    // só faz algo se realmente mudou
-    if (roleBefore === roleAfter)
+    const pedidoData = snapshot.data();
+    if (!pedidoData)
         return;
-    logger.info(`[clearTokensOnRoleChange] Usuário ${userId} mudou de role: ${roleBefore} -> ${roleAfter}`);
-    // Apaga o array de tokens
-    await admin.firestore()
-        .collection("users")
-        .doc(userId)
-        .update({ fcmTokens: [] })
-        .catch((e) => logger.error(`[clearTokensOnRoleChange] Erro ao limpar tokens do usuário ${userId}`, e));
-    logger.info(`[clearTokensOnRoleChange] Tokens removidos do usuário ${userId}`);
+    const numeroPedido = pedidoData.numeroPedido ?? event.params.pedidoId;
+    const clienteNome = pedidoData.nomeUsuario ?? "Cliente";
+    let clienteTelefone = pedidoData.telefone;
+    logger.info(`[notifyPedidoCliente] Novo pedido: ${numeroPedido}`);
+    if (!clienteTelefone) {
+        logger.warn(`[notifyPedidoCliente] Cliente sem telefone cadastrado para pedido ${numeroPedido}`);
+        return;
+    }
+    // Garantir formato internacional +55
+    if (!clienteTelefone.startsWith("+")) {
+        clienteTelefone = `+${clienteTelefone.replace(/\D/g, "")}`;
+    }
+    const mensagem = `Olá ${clienteNome}, seu pedido nº ${numeroPedido} foi recebido com sucesso! 🍞🥖`;
+    try {
+        await (0, sendWhatsAppMessage_1.sendWhatsAppMessage)(clienteTelefone, mensagem);
+        logger.info(`[notifyPedidoCliente] WhatsApp enviado para ${clienteTelefone}`);
+    }
+    catch (error) {
+        logger.error(`[notifyPedidoCliente] Erro ao enviar WhatsApp para pedido ${numeroPedido}:`, error);
+    }
 });

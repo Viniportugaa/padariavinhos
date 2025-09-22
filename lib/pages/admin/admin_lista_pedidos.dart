@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/pedido.dart';
-import 'package:provider/provider.dart';
 import 'package:padariavinhos/widgets/pedido_card.dart';
-import 'package:padariavinhos/services/pedido_provider.dart';
-import 'dart:io';
 import 'package:padariavinhos/models/user.dart';
+import 'package:go_router/go_router.dart';
 
 class ListaPedidosPage extends StatefulWidget {
   const ListaPedidosPage({super.key});
@@ -17,7 +15,7 @@ class ListaPedidosPage extends StatefulWidget {
 class _ListaPedidosPageState extends State<ListaPedidosPage> {
   String filtro = 'hoje';
 
-  // Cache de usuários para evitar múltiplos fetch
+  // Cache de usuários
   final Map<String, User> _usuariosCache = {};
 
   Stream<QuerySnapshot> _pedidosStream() {
@@ -46,7 +44,7 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
     final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
     if (doc.exists) {
       final user = User.fromMap(doc.data()!);
-      _usuariosCache[userId] = user; // adiciona no cache
+      _usuariosCache[userId] = user;
       return user;
     }
     return null;
@@ -66,6 +64,13 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
               PopupMenuItem(value: 'semana', child: Text('Essa Semana')),
               PopupMenuItem(value: 'todos', child: Text('Todos')),
             ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Relatório de Clientes',
+            onPressed: () {
+              context.push('/relatorio-clientes');
+            },
           ),
         ],
       ),
@@ -93,6 +98,7 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
                 future: _getUsuario(pedido.userId),
                 builder: (context, snapshotUsuario) {
                   final usuario = snapshotUsuario.data;
+
                   return PedidoCard(
                     pedido: pedido,
                     usuario: usuario,

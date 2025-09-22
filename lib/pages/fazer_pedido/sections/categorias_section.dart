@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/notifiers/products_notifier.dart';
-import 'package:padariavinhos/notifiers/favoritos_provider.dart';
+import 'package:padariavinhos/provider/favoritos_provider.dart';
 import 'package:padariavinhos/widgets/lista_categorias.dart';
 
 class CategoriasSection extends StatelessWidget {

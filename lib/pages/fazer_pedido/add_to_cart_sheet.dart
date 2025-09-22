@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
@@ -31,17 +31,45 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                 selecionados: selecionados,
               );
 
-              double precoAcompanhamentoCobrado(Acompanhamento a) {
-                if (produto.category.toLowerCase() == 'prato') {
-                  if (selecionados.length <= 3) return 0;
-                  final adicionais = List<Acompanhamento>.from(selecionados.sublist(3));
-                  adicionais.sort((a, b) => a.preco.compareTo(b.preco));
-                  final pos = adicionais.indexOf(a);
-                  return pos != -1 ? adicionais[pos].preco : 0;
-                } else {
+              double precoAcompanhamentoCobrado(
+                  Acompanhamento a,
+                  List<Acompanhamento> selecionados,
+                  Produto produto,
+                  ) {
+                // Se não for prato, cobra sempre
+                if (produto.category.toLowerCase() != 'pratos') {
                   return a.preco;
                 }
+
+                // Até 3 acompanhamentos grátis
+                if (selecionados.length <= 3) return 0.0;
+
+                // Quantos acompanhamentos precisam ser cobrados
+                final numeroACobrar = selecionados.length - 3;
+
+                // Preços de todos selecionados, ordenados do menor para o maior
+                final precosOrdenados = selecionados.map((e) => e.preco).toList()..sort();
+
+                // Pega os menores valores correspondentes ao número a cobrar
+                final valoresACobrar = precosOrdenados.take(numeroACobrar).toList();
+
+                // Map para contar quantas vezes cada valor deve ser cobrado
+                final Map<double, int> contagemValores = {};
+                for (var v in valoresACobrar) {
+                  contagemValores[v] = (contagemValores[v] ?? 0) + 1;
+                }
+
+                // Se o acompanhamento 'a' estiver entre os valores a cobrar
+                if (contagemValores.containsKey(a.preco) && contagemValores[a.preco]! > 0) {
+                  contagemValores[a.preco] = contagemValores[a.preco]! - 1;
+                  return a.preco;
+                }
+
+                // Grátis se não estiver entre os cobrados
+                return 0.0;
               }
+
+
 
               return Container(
                 decoration: BoxDecoration(
@@ -139,9 +167,8 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                               runSpacing: 8,
                               children: acompanhamentosDisponiveis.asMap().entries.map((entry) {
                                 final a = entry.value;
-                                final index = entry.key;
                                 final isSelected = selecionados.contains(a);
-                                final precoExtra = precoAcompanhamentoCobrado(a);
+                                final precoExtra = precoAcompanhamentoCobrado(a, selecionados, produto);
 
                                 return AnimatedScale(
                                   scale: isSelected ? 1.1 : 1.0,
@@ -191,7 +218,7 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                               }).toList(),
                             ),
                             const SizedBox(height: 4),
-                            if (produto.category.toLowerCase() == 'prato' && selecionados.length > 3)
+                            if (produto.category.toLowerCase() == 'pratos' && selecionados.length > 3)
                               Text(
                                 'A partir do 4º acompanhamento será cobrado o menor valor selecionado.',
                                 style: TextStyle(color: Colors.red[700], fontSize: 12),
@@ -207,14 +234,22 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                             produto: produto,
                             selecionados: selecionados,
                           );
-                          final total = precoUnitario * quantidade;
+
+                          Text(
+                            'R\$ ${precoUnitario.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          );
 
                           final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
                           carrinho.adicionarProduto(
                             produto,
                             quantidade.toDouble(),
                             observacao: observacoes,
-                            acompanhamentos: selecionados,
+                            acompanhamentos: List.from(selecionados),
                           );
 
                           final nomesSelecionados = selecionados.map((a) => a.nome).join(', ');

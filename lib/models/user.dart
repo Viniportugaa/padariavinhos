@@ -35,13 +35,19 @@ class User {
     return '$endereco, $numeroEndereco - CEP: $cep ($tipoResidencia$ramal)';
   }
 
+  String get telefoneWhatsApp {
+    String digits = telefone.replaceAll(RegExp(r'\D'), ''); // remove tudo que não é número
+    if (!digits.startsWith('55')) digits = '55$digits'; // adiciona DDI do Brasil
+    return '+$digits';
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
       'nome': nome,
       'endereco': endereco,
       'numero_endereco': numeroEndereco,
-      'telefone': telefone,
+      'telefone': telefoneWhatsApp,
       'email': email,
       'role': role,
       'created_at': createdAt,

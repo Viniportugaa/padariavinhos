@@ -6,8 +6,8 @@ import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/services/pedido_service.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/notifiers/config_notifier.dart';
 import 'dart:ui';
 
@@ -170,15 +170,33 @@ class ConclusaoPedidoController extends ChangeNotifier {
       },
     );
 
+
     if (selectedDate == null) return null;
 
     // --- Seleção de hora ---
-    final startTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, now.hour, now.minute)
-        .add(const Duration(minutes: 30));
+    final hoje = DateTime(now.year, now.month, now.day);
+    final dataEscolhida = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    DateTime startTime;
+
+    // Se a data escolhida for hoje, começa 30 min após agora
+    if (dataEscolhida == hoje) {
+      startTime = now.add(const Duration(minutes: 30));
+      // Ajusta para não iniciar antes da abertura
+      final aberturaHoje = DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
+          abertura.hour, abertura.minute);
+      if (startTime.isBefore(aberturaHoje)) {
+        startTime = aberturaHoje;
+      }
+    } else {
+      // Outro dia: começa no horário de abertura
+      startTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
+          abertura.hour, abertura.minute);
+    }
 
     final endTime = (_tipoEntrega == TipoEntrega.entrega)
         ? DateTime(selectedDate.year, selectedDate.month, selectedDate.day, fechamento.hour, fechamento.minute)
-        .subtract(const Duration(minutes: 20))
+        .subtract(const Duration(minutes: 40))
         : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 50);
 
     final horas = <TimeOfDay>[];

@@ -2,25 +2,66 @@ import '../models/produto.dart';
 import '../models/acompanhamento.dart';
 
 class PrecoHelper {
-  /// Calcula o preço unitário de um produto com acompanhamentos selecionados
   static double calcularPrecoUnitario({
     required Produto produto,
-    required List<Acompanhamento> selecionados,
+    List<Acompanhamento>? selecionados,
   }) {
     double precoBase = produto.preco;
+    if (selecionados == null || selecionados.isEmpty) return precoBase;
 
-    if (produto.category.toLowerCase() == 'prato' && selecionados.length > 3) {
-      // Somar apenas os adicionais (após os 3 primeiros)
-      final adicionais = List<Acompanhamento>.from(selecionados.sublist(3));
-      adicionais.sort((a, b) => a.preco.compareTo(b.preco));
-      for (final a in adicionais) {
-        precoBase += a.preco;
-      }
-    } else if (produto.category.toLowerCase() != 'prato') {
-      // Para outras categorias, soma todos os selecionados
-      precoBase += selecionados.fold(0.0, (soma, a) => soma + a.preco);
+    if (produto.category.toLowerCase() == 'pratos') {
+      if (selecionados.length <= 3) return precoBase;
+
+      // Número de acompanhamentos a cobrar
+      final numeroACobrar = selecionados.length - 3;
+
+      // Ordena todos os preços do menor para o maior
+      final precosOrdenados = selecionados.map((a) => a.preco).toList()
+        ..sort();
+
+      // Soma os menores valores correspondentes ao número a cobrar
+      final valorAcomp = precosOrdenados.take(numeroACobrar).fold(
+          0.0, (s, v) => s + v);
+
+      return precoBase + valorAcomp;
+    } else {
+      // Outras categorias: soma todos
+      final valorAcomp = selecionados.fold(0.0, (s, a) => s + a.preco);
+      return precoBase + valorAcomp;
+    }
+  }
+
+  static double precoAcompanhamentoCobrado({
+    required Produto produto,
+    required List<Acompanhamento> selecionados,
+    required int index,
+  }) {
+    if (produto.category.toLowerCase() != 'pratos') {
+      return selecionados[index].preco; // sempre cobra
     }
 
-    return precoBase;
+    if (index < 3) return 0.0; // primeiros 3 grátis
+
+    // Quantos devem ser cobrados
+    final numeroACobrar = selecionados.length - 3;
+
+    // Lista de preços ordenados
+    final precosOrdenados = selecionados.map((a) => a.preco).toList()
+      ..sort();
+
+    // Menores valores que serão cobrados
+    final valoresACobrar = precosOrdenados.take(numeroACobrar).toList();
+
+    // Copiamos a lista de cobrados para consumir valores à medida que são usados
+    final cobradosRestantes = List<double>.from(valoresACobrar);
+
+    final precoAtual = selecionados[index].preco;
+
+    if (cobradosRestantes.contains(precoAtual)) {
+      cobradosRestantes.remove(precoAtual); // consome um preço igual
+      return precoAtual;
+    }
+
+    return 0.0;
   }
 }

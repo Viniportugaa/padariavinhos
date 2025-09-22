@@ -5,6 +5,7 @@ import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import '../widgets/cep_text_field.dart';
+import 'package:padariavinhos/helpers/phone_helper.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -182,13 +183,20 @@ class _OpcoesPageState extends State<OpcoesPage> {
       DialogHelper.showTemporaryToast(context, "Valide o CEP antes de salvar.");
       return;
     }
+
+    final formattedPhone = PhoneHelper.normalizeToInternational(phoneController.text);
+    if (!PhoneHelper.isValidInternational(formattedPhone)) {
+      DialogHelper.showTemporaryToast(context, 'Telefone inválido. Use apenas números válidos.');
+      return;
+    }
+
     try {
       final cepRaw = _onlyDigits(cepController.text.trim());
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'nome': nameController.text.trim(),
         'endereco': addressController.text.trim(),
         'numero_endereco': addressNumberController.text.trim(),
-        'telefone': phoneController.text.trim(),
+        'telefone': formattedPhone,
         'cep': cepRaw,
         'tipo_residencia': _tipoResidencia,
         'ramal_apartamento': _tipoResidencia == 'apartamento' &&

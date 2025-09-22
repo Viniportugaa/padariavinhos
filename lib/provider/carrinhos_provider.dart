@@ -2,30 +2,36 @@ import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 import '../models/produto.dart';
 import '../models/acompanhamento.dart';
+import 'package:padariavinhos/helpers/preco_helper.dart';
 
 class CarrinhoProvider extends ChangeNotifier {
   final List<ItemCarrinho> _itens = [];
 
   List<ItemCarrinho> get itens => List.unmodifiable(_itens);
 
-  double get total =>
-      _itens.fold(0.0, (soma, item) => soma + item.subtotal);
-
+  double get total => _itens.fold(0.0, (soma, item) {
+    final precoUnitario = PrecoHelper.calcularPrecoUnitario(
+      produto: item.produto,
+      selecionados: item.acompanhamentos,
+    );
+    return soma + precoUnitario * item.quantidade;
+  });
   // ================== ADICIONAR PRODUTO ==================
   void adicionarProduto(
       Produto produto,
       double quantidade, {
         String? observacao,
         List<Acompanhamento>? acompanhamentos,
-        Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
+
       }) {
     final indexExistente = _itens.indexWhere((item) =>
     item.produto.id == produto.id &&
         item.observacao == observacao &&
-        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
-        _acompanhamentosPorProdutoIguais(
-            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
-
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos));
+    final precoUnitario = PrecoHelper.calcularPrecoUnitario(
+      produto: produto,
+      selecionados: acompanhamentos ?? [],
+    );
     if (indexExistente >= 0) {
       _itens[indexExistente].quantidade += quantidade;
     } else {
@@ -34,8 +40,7 @@ class CarrinhoProvider extends ChangeNotifier {
         quantidade: quantidade,
         observacao: observacao,
         acompanhamentos: acompanhamentos ?? [],
-        acompanhamentosPorProduto: acompanhamentosPorProduto,
-        preco: produto.preco,
+        preco: precoUnitario,
       );
       _itens.add(novoItem);
     }
@@ -74,14 +79,12 @@ class CarrinhoProvider extends ChangeNotifier {
     required String produtoId,
     String? observacao,
     List<Acompanhamento>? acompanhamentos,
-    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
+
   }) {
     final index = _itens.indexWhere((item) =>
     item.produto.id == produtoId &&
         item.observacao == observacao &&
-        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
-        _acompanhamentosPorProdutoIguais(
-            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos));
     if (index >= 0) {
       removerPorIndice(index);
     }
@@ -100,14 +103,12 @@ class CarrinhoProvider extends ChangeNotifier {
     required String observacao,
     String? observacaoAntiga,
     List<Acompanhamento>? acompanhamentos,
-    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
+
   }) {
     final index = _itens.indexWhere((item) =>
     item.produto.id == produtoId &&
         item.observacao == observacaoAntiga &&
-        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos) &&
-        _acompanhamentosPorProdutoIguais(
-            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
+        _acompanhamentosIguais(item.acompanhamentos, acompanhamentos));
     if (index >= 0) {
       atualizarObservacao(index, observacao);
     }
@@ -124,14 +125,12 @@ class CarrinhoProvider extends ChangeNotifier {
   void atualizarAcompanhamentosPorProdutoId({
     required String produtoId,
     List<Acompanhamento>? acompanhamentos,
-    Map<String, List<Acompanhamento>>? acompanhamentosPorProduto,
+
     String? observacao,
   }) {
     final index = _itens.indexWhere((item) =>
     item.produto.id == produtoId &&
-        item.observacao == observacao &&
-        _acompanhamentosPorProdutoIguais(
-            item.acompanhamentosPorProduto, acompanhamentosPorProduto));
+        item.observacao == observacao);
     if (index >= 0 && acompanhamentos != null) {
       atualizarAcompanhamentos(index, acompanhamentos);
     }
@@ -153,21 +152,6 @@ class CarrinhoProvider extends ChangeNotifier {
     return true;
   }
 
-  bool _acompanhamentosPorProdutoIguais(
-      Map<String, List<Acompanhamento>>? a,
-      Map<String, List<Acompanhamento>>? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null) return false;
-    if (a.length != b.length) return false;
-
-    for (var key in a.keys) {
-      final listaA = a[key];
-      final listaB = b[key];
-      if (!_acompanhamentosIguais(listaA, listaB)) return false;
-    }
-
-    return true;
-  }
 
   void limpar() {
     _itens.clear();

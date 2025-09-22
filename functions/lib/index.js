@@ -33,11 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearTokensOnRoleChange = exports.notifyAdminNewPedido = void 0;
+exports.notifyPedidoCliente = exports.clearTokensOnRoleChange = exports.notifyAdminNewPedido = void 0;
 // index.ts
 const admin = __importStar(require("firebase-admin"));
-admin.initializeApp(); // Inicialização única
-var adminovopedido_1 = require("./adminovopedido");
+admin.initializeApp();
+// Imports
+const adminovopedido_1 = require("./adminovopedido");
 Object.defineProperty(exports, "notifyAdminNewPedido", { enumerable: true, get: function () { return adminovopedido_1.notifyAdminNewPedido; } });
-var limparTokenstrocaRole_1 = require("./limparTokenstrocaRole");
+const limparTokenstrocaRole_1 = require("./limparTokenstrocaRole");
 Object.defineProperty(exports, "clearTokensOnRoleChange", { enumerable: true, get: function () { return limparTokenstrocaRole_1.clearTokensOnRoleChange; } });
+const notifyPedidoCliente_1 = require("./notifyPedidoCliente");
+Object.defineProperty(exports, "notifyPedidoCliente", { enumerable: true, get: function () { return notifyPedidoCliente_1.notifyPedidoCliente; } });

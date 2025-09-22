@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/widgets/auth_panel.dart';
 
 class MenuAdmin extends StatelessWidget {

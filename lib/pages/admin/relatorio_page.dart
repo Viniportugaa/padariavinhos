@@ -332,13 +332,6 @@ class _RelatorioPageState extends State<RelatorioPage> {
         for (var acomp in item.acompanhamentos ?? []) {
           count[acomp.nome] = (count[acomp.nome] ?? 0) + 1;
         }
-        if (item.acompanhamentosPorProduto != null) {
-          for (var lista in item.acompanhamentosPorProduto!.values) {
-            for (var acomp in lista) {
-              count[acomp.nome] = (count[acomp.nome] ?? 0) + 1;
-            }
-          }
-        }
       }
     }
     return count;

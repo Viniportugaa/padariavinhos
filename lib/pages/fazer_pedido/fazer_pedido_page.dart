@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/notifiers/config_notifier.dart';
-import 'package:padariavinhos/notifiers/aberto_check.dart';
+import 'package:padariavinhos/helpers/aberto_check.dart';
 import 'package:padariavinhos/notifiers/products_notifier.dart';
-import 'package:padariavinhos/notifiers/favoritos_provider.dart';
+import 'package:padariavinhos/provider/favoritos_provider.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 
 import 'sections/banner_section.dart';

@@ -1,74 +1,71 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/models/user.dart';
+import 'package:padariavinhos/services/pedido_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
 
+class PedidoStatus {
+  static const pendente = 'pendente';
+  static const emPreparo = 'em preparo';
+  static const finalizado = 'finalizado';
+  static const cancelado = 'cancelado';
+}
+
 class PedidoProvider extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final PedidoService _pedidoService = PedidoService();
   final BlueThermalPrinter printer = BlueThermalPrinter.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ----------------- Cálculos -----------------
   double subtotal(Pedido pedido) => pedido.subtotal;
-  double totalComFrete(Pedido pedido) => pedido.totalComFrete;
+  double totalComFrete(Pedido pedido) => pedido.totalFinal;
 
-  void atualizarItemPedidoPorIndice({
-    required Pedido pedido,
-    required int index,
-    double? quantidade,
-    double? precoUnitarioCustom,
-  }) {
-    if (index < 0 || index >= pedido.itens.length) return;
-
-    final item = pedido.itens[index];
-
-    // Atualiza quantidade se fornecida
-    if (quantidade != null) item.quantidade = quantidade;
-
-    // Atualiza preço customizado se fornecido
-    if (precoUnitarioCustom != null) {
-      item.precoUnitarioCustom = precoUnitarioCustom > 0 ? precoUnitarioCustom : null;
-    }
-
-    notifyListeners();
-  }
-
-
+  // ----------------- Status e persistência -----------------
   Future<void> finalizar(Pedido pedido) async {
-    if (pedido.impresso == true) {
-      await _firestore
-          .collection('pedidos')
-          .doc(pedido.id)
-          .update({'status': 'finalizado'});
-      pedido.status = 'finalizado';
-      notifyListeners();
-    }
-  }
-  Future<void> cancelarPedido(Pedido pedido) async {
-    final docRef = _firestore.collection('pedidos').doc(pedido.id);
+    pedido.status = PedidoStatus.finalizado;
+    notifyListeners();
 
-    await docRef.update({
-      'status': 'cancelado',
-      'dataCancelamento': DateTime.now(),
-      'notificacao': 'Seu pedido foi cancelado. Por favor, entre em contato: 1199999900',
+    await _firestore.collection('pedidos').doc(pedido.id).update({
+      'status': PedidoStatus.finalizado,
+      'totalFinal': pedido.totalFinal,
     });
 
-    // Atualiza o objeto local
-    pedido.status = 'cancelado';
-    notifyListeners();
+    await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
   }
 
-  Future<void> editar(Pedido pedido) async {
-    if (pedido.status == 'pendente') {
-      await _firestore
-          .collection('pedidos')
-          .doc(pedido.id)
-          .update({'status': 'em preparo'});
-      pedido.status = 'em preparo';
+  Future<void> cancelar(Pedido pedido) async {
+    pedido.status = PedidoStatus.cancelado;
+    notifyListeners();
+
+    await _firestore.collection('pedidos').doc(pedido.id).update({
+      'status': PedidoStatus.cancelado,
+      'dataCancelamento': DateTime.now(),
+      'notificacao':
+      'Seu pedido foi cancelado. Por favor, entre em contato: 1199999900',
+      'totalFinal': pedido.totalFinal,
+    });
+
+    await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
+  }
+
+  Future<void> colocarEmPreparo(Pedido pedido) async {
+    if (pedido.status == PedidoStatus.pendente) {
+      pedido.status = PedidoStatus.emPreparo;
       notifyListeners();
+
+      await _firestore.collection('pedidos').doc(pedido.id).update({
+        'status': PedidoStatus.emPreparo,
+        'totalFinal': pedido.totalFinal,
+      });
+
+      await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
     }
   }
-  /// Impressão via bluetooth
+
+  // ----------------- Impressão -----------------
   Future<void> imprimir(Pedido pedido, User usuario, BuildContext context) async {
     try {
       final statuses = await [
@@ -103,8 +100,7 @@ class PedidoProvider extends ChangeNotifier {
         if (!isConnected) throw Exception("Falha ao conectar à impressora.");
       }
 
-      String enderecoCompleto =
-          "${usuario.endereco}, Nº ${usuario.numeroEndereco}";
+      String enderecoCompleto = "${usuario.endereco}, Nº ${usuario.numeroEndereco}";
       if (usuario.tipoResidencia == "apartamento" &&
           usuario.ramalApartamento != null &&
           usuario.ramalApartamento!.isNotEmpty) {
@@ -121,7 +117,7 @@ class PedidoProvider extends ChangeNotifier {
       printer.printNewLine();
       printer.printLeftRight("Cliente:", pedido.nomeUsuario, 1);
       printer.printLeftRight("Telefone:", pedido.telefone, 1);
-      printer.printCustom("Endereco:", 1, 0);
+      printer.printCustom("Endereço:", 1, 0);
       printer.printCustom(enderecoCompleto, 0, 0);
       printer.printLeftRight("Data:", DateFormat('dd/MM/yyyy HH:mm').format(pedido.data.toLocal()), 1);
       printer.printNewLine();
@@ -131,42 +127,46 @@ class PedidoProvider extends ChangeNotifier {
         final prefixo = item.produto.vendidoPorPeso
             ? "${item.quantidade.toStringAsFixed(2)}/Kg"
             : "${item.quantidade}x";
-        final preco = (item.precoUnitarioCustom ?? item.produto.preco);
-        final subtotalItem = preco * item.quantidade;
 
-        printer.printLeftRight(
-          "$prefixo ${item.produto.nome}",
-          "R\$ ${subtotalItem.toStringAsFixed(2)}",
-          0,
-        );
+        final subtotalItem = item.subtotal;
+
+        printer.printLeftRight("$prefixo ${item.produto.nome}", "R\$ ${subtotalItem.toStringAsFixed(2)}", 0);
 
         if (item.acompanhamentos != null && item.acompanhamentos!.isNotEmpty) {
           final nomesAcomp = item.acompanhamentos!.map((a) => a.nome).join(', ');
           printer.printCustom("  Acomp: $nomesAcomp", 0, 0);
         }
+
         if (item.observacao?.isNotEmpty ?? false) {
           printer.printCustom("  Obs: ${item.observacao}", 0, 0);
         }
       }
 
       printer.printNewLine();
-      printer.printLeftRight("Subtotal:", "R\$ ${subtotal(pedido).toStringAsFixed(2)}", 1);
-      printer.printLeftRight("Frete:", "R\$ ${(pedido.frete ?? 0).toStringAsFixed(2)}", 1);
-      printer.printCustom("Total: R\$ ${totalComFrete(pedido).toStringAsFixed(2)}", 2, 2);
+      printer.printLeftRight("Subtotal:", "R\$ ${pedido.subtotal.toStringAsFixed(2)}", 1);
+      printer.printLeftRight("Frete:", "R\$ ${pedido.frete.toStringAsFixed(2)}", 1);
+      printer.printCustom("Total: R\$ ${pedido.totalFinal.toStringAsFixed(2)}", 2, 2);
       printer.printCustom("Status: ${pedido.status}", 1, 1);
       printer.printNewLine();
       printer.printQRcode("https://meuapp.com/pedido/${pedido.id}", 200, 200, 1);
       printer.printNewLine();
       printer.paperCut();
 
-      await _firestore.collection('pedidos').doc(pedido.id)
-          .update({'status': 'em preparo', 'impresso': true});
+      pedido.status = PedidoStatus.emPreparo;
+      pedido.impresso = true;
+      notifyListeners();
+
+      await _firestore.collection('pedidos').doc(pedido.id).update({
+        'status': PedidoStatus.emPreparo,
+        'impresso': true,
+        'totalFinal': pedido.totalFinal,
+      });
+
+      await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impressão realizada com sucesso!')),
       );
-
-      notifyListeners();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao imprimir: $e')),

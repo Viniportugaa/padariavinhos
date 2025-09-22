@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/controller/conclusao_pedido_controller.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
@@ -25,7 +25,7 @@ class EditarAcompanhamentosDialog {
     List<Acompanhamento> selecionados = List.from(item.acompanhamentos ?? []);
 
     double precoAcompanhamentoCobrado(Acompanhamento a) {
-      if (item.produto.category.toLowerCase() == 'prato') {
+      if (item.produto.category.toLowerCase() == 'pratos') {
         if (selecionados.length <= 3) return 0.0;
         final adicionais = List<Acompanhamento>.from(selecionados.sublist(3));
         adicionais.sort((a, b) => a.preco.compareTo(b.preco));

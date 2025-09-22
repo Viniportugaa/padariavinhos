@@ -2,13 +2,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/notifiers/aberto_check.dart';
-import 'package:padariavinhos/services/carrinhos_provider.dart';
-import 'package:padariavinhos/services/auth_notifier.dart';
+import 'package:padariavinhos/helpers/aberto_check.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/carrinho_item_card.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/pagamento_selector.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/endereco_card.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/controller/conclusao_pedido_controller.dart';
+import 'package:padariavinhos/pages/conclusao_pedido/widgets/pedido_minimo_widget.dart';
+import 'package:padariavinhos/helpers/preco_helper.dart';
 
 enum TipoEntrega { entrega, retirada, noLocal }
 
@@ -22,6 +24,10 @@ class ConclusaoPedidoPage extends StatelessWidget {
       child: const _ConclusaoPedidoPageBody(),
     );
   }
+}
+
+bool pedidoValido(double total, {double minimo = 20}){
+  return total >= minimo;
 }
 
 class _ConclusaoPedidoPageBody extends StatelessWidget {
@@ -48,6 +54,8 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
           }
 
           final user = authNotifier.user!;
+          final valorTotal = carrinho.total + controller.frete;
+          const valorMinimo = 20.0;
 
           return Scaffold(
             backgroundColor: Colors.black45,
@@ -88,7 +96,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                     controller.buildTipoEntrega(context),
                     const SizedBox(height: 16),
 
-                    // Endereço do usuário com clique
+                    // Endereço do usuário
                     EnderecoCard(
                       endereco: user.enderecoFormatado,
                       goToPath: '/opcoes',
@@ -99,7 +107,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                     PagamentoSelector(controller: controller),
                     const SizedBox(height: 16),
 
-                    // Lista de itens com cartões animados
+                    // Lista de itens
                     Text(
                       'Itens do Carrinho',
                       style: TextStyle(
@@ -114,14 +122,21 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                       itemCount: carrinho.itens.length,
                       itemBuilder: (context, index) {
                         final item = carrinho.itens[index];
-                        return _buildAnimatedItemCard(item, index, carrinho, controller);
+                        return _buildAnimatedItemCard(
+                            item, index, carrinho, controller);
                       },
                     ),
                     const SizedBox(height: 16),
 
                     // Totais
                     _buildTotais(carrinho, controller),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
+                    // Aviso pedido mínimo
+                    if (!pedidoValido(valorTotal, minimo: valorMinimo))
+                      const PedidoMinimoAviso(valorMinimo: valorMinimo),
+
+                    const SizedBox(height: 8),
 
                     // Botão finalizar pedido
                     SizedBox(
@@ -129,16 +144,19 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                       height: 55,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                          Colors.deepOrangeAccent.withOpacity(0.95),
+                          backgroundColor: Colors.deepOrangeAccent
+                              .withOpacity(0.95),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        onPressed: controller.isLoading
+                        onPressed: controller.isLoading ||
+                            !pedidoValido(valorTotal,
+                                minimo: valorMinimo)
                             ? null
-                            : () => controller.finalizarPedido(
-                            context, carrinho, authNotifier),
+                            : () =>
+                            controller.finalizarPedido(
+                                context, carrinho, authNotifier),
                         child: controller.isLoading
                             ? const CircularProgressIndicator(
                             color: Colors.white)
@@ -162,6 +180,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
       ),
     );
   }
+
 
   /// Cartão animado para cada item do carrinho
   Widget _buildAnimatedItemCard(item, int index, CarrinhoProvider carrinho,
@@ -202,8 +221,20 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
     );
   }
 
-  /// Totais com glassmorphism
-  Widget _buildTotais(CarrinhoProvider carrinho, ConclusaoPedidoController controller) {
+// Totais com glassmorphism
+  Widget _buildTotais(CarrinhoProvider carrinho,
+      ConclusaoPedidoController controller) {
+    double totalItens = 0;
+
+    // Calcula o total considerando a lógica de preço dos acompanhamentos
+    for (var item in carrinho.itens) {
+      final precoUnitario = PrecoHelper.calcularPrecoUnitario(
+        produto: item.produto,
+        selecionados: item.acompanhamentos ?? [],
+      );
+      totalItens += precoUnitario * item.quantidade;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -213,13 +244,13 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildTotalRow('Itens', carrinho.total),
+          _buildTotalRow('Itens', totalItens),
           const SizedBox(height: 8),
           _buildTotalRow('Frete', controller.frete),
           const Divider(color: Colors.black),
           _buildTotalRow(
             'Total',
-            carrinho.total + controller.frete,
+            totalItens + controller.frete,
             isBold: true,
             valueColor: Colors.green,
           ),
