@@ -11,7 +11,7 @@ import 'package:padariavinhos/pages/menuinicial_page.dart';
 import 'package:padariavinhos/pages/offline.dart';
 import 'package:padariavinhos/pages/opcoes_page.dart';
 import 'package:padariavinhos/pages/quem_somos_page.dart';
-import 'package:padariavinhos/pages/signup_page.dart';
+import 'package:padariavinhos/pages/signup/signup_page.dart';
 import 'package:padariavinhos/pages/splash_screen.dart';
 import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:padariavinhos/pages/admin/menu_admin.dart';
@@ -28,6 +28,8 @@ import 'package:padariavinhos/pages/admin/admin_banner_page.dart';
 import 'package:padariavinhos/pages/admin/admin_cria_categoria.dart';
 import 'package:padariavinhos/pages/admin/relatorio_page.dart';
 import 'package:padariavinhos/pages/admin/relatorio_cliente.dart';
+import 'package:padariavinhos/custom_shell.dart';
+import 'package:padariavinhos/pages/admin/cupons_admin_page.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -72,7 +74,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/splash',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const SplashScreen(), state: state),
+            scaleTransitionPage(child: const SplashScreen(), state: state),
       ),
       GoRoute(
         path: '/admin',
@@ -97,61 +99,67 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/listaproduto',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: AdminProdutosPage(), state: state),
+            scaleTransitionPage(child: AdminProdutosPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/cupomadmin',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: CuponsAdminPage(), state: state),
       ),
 
       GoRoute(
         path: '/relatorio-clientes',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: RelatorioClientesPage(), state: state),
+            scaleTransitionPage(child: RelatorioClientesPage(), state: state),
       ),
 
       GoRoute(
         path: '/lista',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: ListaPedidosPage(), state: state),
+            scaleTransitionPage(child: ListaPedidosPage(), state: state),
       ),
 
       GoRoute(
         path: '/signin',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: LoginPage(), state: state),
+            scaleTransitionPage(child: LoginPage(), state: state),
       ),
 
       GoRoute(
         path: '/signup',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: SignUpPage(), state: state),
+            scaleTransitionPage(child: SignUpPage(), state: state),
       ),
       GoRoute(
         path: '/relatorio',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const RelatorioPage(), state: state),
+            scaleTransitionPage(child: const RelatorioPage(), state: state),
       ),
       GoRoute(
         path: '/banneradmin',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: AdminBannersPage(), state: state),
+            scaleTransitionPage(child: AdminBannersPage(), state: state),
       ),
       GoRoute(
         path: '/categoriadmin',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: CriarCategoriaPage(), state: state),
+            scaleTransitionPage(child: CriarCategoriaPage(), state: state),
       ),
       GoRoute(
         path: '/lgpd',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const PDFScreen(), state: state),
+            scaleTransitionPage(child: const PDFScreen(), state: state),
       ),
       GoRoute(
         path: '/cadastro-produto',
         pageBuilder: (c, s) =>
-            fadeTransitionPage(child: CadastroProdutoPage(), state: s),
+            scaleTransitionPage(child: CadastroProdutoPage(), state: s),
       ),
       GoRoute(
         path: '/config-abertura',
         pageBuilder: (c, s) =>
-            fadeTransitionPage(child: ConfigAberturaPage(), state: s),
+            scaleTransitionPage(child: ConfigAberturaPage(), state: s),
       ),
       GoRoute(
         path: '/imagem-produto/:id',
@@ -163,22 +171,22 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/offline',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const OfflinePage(), state: state),
+            scaleTransitionPage(child: const OfflinePage(), state: state),
       ),
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const LoginPage(), state: state),
+            scaleTransitionPage(child: const LoginPage(), state: state),
       ),
 
       GoRoute(
         path: '/signup',
         pageBuilder: (context, state) =>
-            fadeTransitionPage(child: const SignUpPage(), state: state),
+            scaleTransitionPage(child: const SignUpPage(), state: state),
       ),
       GoRoute(
         path: '/quem-somos',
-        pageBuilder: (c, s) => fadeTransitionPage(
+        pageBuilder: (c, s) => scaleTransitionPage(
           child: const QuemSomosPage(),
           state: s,
         ),
@@ -186,96 +194,39 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/cadastro-produto',
         pageBuilder: (c, s) =>
-            fadeTransitionPage(child: CadastroProdutoPage(), state: s),
+            scaleTransitionPage(child: CadastroProdutoPage(), state: s),
       ),
       ShellRoute(
-        builder: (context, state, child) {
-          final hideNav = state.uri.path == '/menu';
-          final currentIndex = _getIndexFromLocation(state.uri.path);
-          final isPedidoPage = state.uri.path == '/pedido';
-
-          return Scaffold(
-            body: child,
-            floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-            floatingActionButton:(state.uri.path == '/menu') ? null : GestureDetector(
-              onTap: () => context.go('/pedido'),
-              child: Container(
-                height: 70,
-                width: 70,
-                decoration: BoxDecoration(
-                  color: isPedidoPage ? Colors.red : Colors.grey[400],
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 5,
-                      offset: Offset(0, 3),
-                    )
-                  ],
-                ),
-                child: Icon(
-                  Icons.add_circle,
-                  size: 36,
-                  color: isPedidoPage ? Colors.white : Colors.black54,
-                ),
-              ),
-            ),
-            bottomNavigationBar: hideNav
-                ? null
-                : BottomAppBar(
-              shape: const CircularNotchedRectangle(),
-              notchMargin: 8,
-              child: SizedBox(
-                height: 60,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(context, Icons.home, '/menu', currentIndex == 0),
-                    _buildNavItem(context, Icons.receipt, '/meuspedidos', currentIndex == 1),
-                    SizedBox(width: 70), // Espaço para o botão central
-                    _buildNavItem(context, Icons.person, '/opcoes', currentIndex == 3),
-                    Consumer<CarrinhoProvider>(
-                      builder: (_, carrinho, __) {
-                        final temItens = carrinho.itens.isNotEmpty;
-                        return _buildNavItem(
-                          context,
-                          Icons.shopping_cart,
-                          '/conclusao-pedido',
-                          currentIndex == 4,
-                          badge: temItens,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+        builder: (context, state, child) =>
+            CustomShell(child: child, state: state),
         routes: [
           GoRoute(
             path: '/menu',
-            pageBuilder: (c, s) => fadeTransitionPage(child: MenuInicial(), state: s),
+            pageBuilder: (c, s) =>
+                slideFadeTransitionPage(child: MenuInicial(), state: s),
           ),
           GoRoute(
             path: '/meuspedidos',
-            pageBuilder: (c, s) => fadeTransitionPage(child: MeuPedidoPage(), state: s),
+            pageBuilder: (c, s) =>
+                slideFadeTransitionPage(child: MeuPedidoPage(), state: s),
           ),
           GoRoute(
             path: '/pedido',
-            pageBuilder: (c, s) => fadeTransitionPage(child: FazerPedidoPage(), state: s),
+            pageBuilder: (c, s) =>
+                slideFadeTransitionPage(child: FazerPedidoPage(), state: s),
           ),
           GoRoute(
             path: '/opcoes',
-            pageBuilder: (c, s) => fadeTransitionPage(child: OpcoesPage(), state: s),
+            pageBuilder: (c, s) =>
+                slideFadeTransitionPage(child: OpcoesPage(), state: s),
           ),
           GoRoute(
             path: '/conclusao-pedido',
-            pageBuilder: (c, s) => fadeTransitionPage(child: ConclusaoPedidoPage(), state: s),
+            pageBuilder: (c, s) =>
+                slideFadeTransitionPage(child: ConclusaoPedidoPage(), state: s),
           ),
         ],
-      )
-
+      ),
     ],
   );
 }

@@ -60,7 +60,7 @@ class PedidoDetalhesModal extends StatelessWidget {
             TotalRow(label: "Frete", value: pedido.frete),
             TotalRow(
               label: "Total",
-              value: pedido.totalFinal ?? pedido.totalComFrete,
+              value: pedido.totalFinal,
               destaque: true,
             ),
           ],

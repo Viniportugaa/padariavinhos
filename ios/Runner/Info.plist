@@ -27,7 +27,7 @@
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
+	<string></string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -46,7 +46,20 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- 🔹 Permissões equivalentes às do AndroidManifest.xml -->
+	<!-- 🔹 Background modes unificados -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
+
+	<!-- 🔹 Firebase -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
+
+	<!-- 🔹 Permissões -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>O app precisa de acesso ao Bluetooth para conectar à impressora.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
@@ -55,15 +68,9 @@
 	<string>O app precisa acessar a câmera para capturar imagens.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>O app precisa acessar suas fotos para upload de imagens.</string>
+
+	<!-- 🔹 Tracking (apenas se usar AdMob/Analytics com IDFA, senão remova) -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>O app pode usar identificadores para personalizar notificações e relatórios.</string>
-
-	<!-- 🔹 Habilitar background modes (para Bluetooth e notificações) -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>bluetooth-central</string>
-		<string>bluetooth-peripheral</string>
-		<string>remote-notification</string>
-	</array>
 </dict>
 </plist>

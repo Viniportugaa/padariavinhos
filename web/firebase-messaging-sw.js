@@ -14,3 +14,10 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  console.log("📩 Mensagem recebida em background:", payload);
+  self.registration.showNotification(payload.notification.title, {
+    body: payload.notification.body,
+  });
+});

@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import '../widgets/cep_text_field.dart';
 import 'package:padariavinhos/helpers/phone_helper.dart';
+import 'package:padariavinhos/services/entrega_service.dart';
+import 'package:padariavinhos/notifiers/auth_notifier.dart';
+import 'package:provider/provider.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -184,31 +187,27 @@ class _OpcoesPageState extends State<OpcoesPage> {
       return;
     }
 
-    final formattedPhone = PhoneHelper.normalizeToInternational(phoneController.text);
-    if (!PhoneHelper.isValidInternational(formattedPhone)) {
-      DialogHelper.showTemporaryToast(context, 'Telefone inválido. Use apenas números válidos.');
-      return;
-    }
+    final authNotifier = Provider.of<AuthNotifier>(context, listen: false);
 
-    try {
-      final cepRaw = _onlyDigits(cepController.text.trim());
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'nome': nameController.text.trim(),
-        'endereco': addressController.text.trim(),
-        'numero_endereco': addressNumberController.text.trim(),
-        'telefone': formattedPhone,
-        'cep': cepRaw,
-        'tipo_residencia': _tipoResidencia,
-        'ramal_apartamento': _tipoResidencia == 'apartamento' &&
-            ramalApartamentoController.text.trim().isNotEmpty
-            ? ramalApartamentoController.text.trim()
-            : null,
-      }, SetOptions(merge: true));
-       DialogHelper.showTemporaryToast(context, 'Dados atualizados com sucesso!');
-    } catch (e) {
-         DialogHelper.showTemporaryToast(context, 'Erro ao atualizar dados: $e');
+    final cepRaw = _onlyDigits(cepController.text.trim());
+
+    final atualizado = await authNotifier.atualizarEndereco(
+      cep: cepRaw,
+      endereco: addressController.text.trim(),
+      numero: addressNumberController.text.trim(),
+      tipoResidencia: _tipoResidencia,
+      ramal: _tipoResidencia == 'apartamento'
+          ? ramalApartamentoController.text.trim()
+          : null,
+    );
+
+    if (atualizado) {
+      DialogHelper.showTemporaryToast(context, 'Dados atualizados com sucesso!');
+    } else {
+      DialogHelper.showTemporaryToast(context, 'Erro ao atualizar dados.');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -296,25 +295,13 @@ class _OpcoesPageState extends State<OpcoesPage> {
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextFormField(
-                    controller: cepController,
-                    label: "CEP",
-                    icon: Icons.location_on,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [_cepFormatter],
-                    validator: (value) {
-                      final v = value?.trim() ?? '';
-                      if (v.isEmpty) return 'CEP não pode ser vazio';
-                      if (!RegExp(r'^\d{5}-?\d{3}$').hasMatch(v)) return 'CEP inválido';
-                      return null;
-                    },
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: _tipoResidencia,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.apartment, color: Colors.black),
+                      prefixIcon: Icon(
+                        _tipoResidencia == 'apartamento' ? Icons.apartment : Icons.home,
+                        color: Colors.black,
+                      ),
                       labelText: 'Tipo de Residência',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       focusedBorder: OutlineInputBorder(
@@ -328,14 +315,16 @@ class _OpcoesPageState extends State<OpcoesPage> {
                     ],
                     onChanged: (v) => setState(() => _tipoResidencia = v ?? 'casa'),
                   ),
-                  const SizedBox(height: 16),
-                  _buildTextFormField(
-                    controller: ramalApartamentoController,
-                    label: "Ramal / Apartamento (opcional)",
-                    icon: Icons.tag,
-                    requiredField: false,
-                    textInputAction: TextInputAction.done,
-                  ),
+                  if (_tipoResidencia == 'apartamento') ...[
+                    const SizedBox(height: 16),
+                    _buildTextFormField(
+                      controller: ramalApartamentoController,
+                      label: "Ramal / Bloco / Apartamento",
+                      icon: Icons.tag_rounded,
+                      requiredField: false,
+                      textInputAction: TextInputAction.done,
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: updateUserData,

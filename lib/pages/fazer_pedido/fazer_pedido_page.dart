@@ -39,14 +39,8 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
     _carregarAcompanhamentos();
     _scrollController.addListener(() {
       final offset = _scrollController.offset;
-
-      // Opacidade diminui até sumir
       double newOpacity = (1 - (offset / 200)).clamp(0.0, 1.0);
-
-      // Banner encolhe suavemente até o mínimo
-      double newHeight =
-      (180 - offset).clamp(_minBannerHeight, 180).toDouble();
-
+      double newHeight = (180 - offset).clamp(_minBannerHeight, 180).toDouble();
       if (newOpacity != _opacity || newHeight != _bannerHeight) {
         setState(() {
           _opacity = newOpacity;
@@ -78,46 +72,86 @@ class _FazerPedidoPageState extends State<FazerPedidoPage> {
     return AbertoChecker(
       child: Scaffold(
         body: SafeArea(
-          child: Column(
-            children: [
-              if (_bannerHeight > 0)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: _bannerHeight,
-                  child: AnimatedOpacity(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFFFFAF0), Color(0xFFF5F5F5)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Column(
+              children: [
+                if (_bannerHeight > 0)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: _bannerHeight,
+                    child: AnimatedOpacity(
+                      opacity: _opacity,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: BannerSection(acompanhamentos: acompanhamentos),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                if (_opacity > 0)
+                  AnimatedOpacity(
                     opacity: _opacity,
                     duration: const Duration(milliseconds: 200),
-                    child: BannerSection(acompanhamentos: acompanhamentos),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CategoriasSection(mostrar: mostrarCategorias),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                ProdutoSearchBar(
+                  onChanged: (valor) => setState(() => filtroNome = valor),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Consumer2<ProductsNotifier, FavoritosProvider>(
+                      builder: (context, productsNotifier, favoritosProvider, _) {
+                        return ProdutosSection(
+                          filtroNome: filtroNome,
+                          acompanhamentos: acompanhamentos,
+                          scrollController: _scrollController,
+                        );
+                      },
+                    ),
                   ),
                 ),
-              const SizedBox(height: 12),
-              if (_opacity > 0)
-                AnimatedOpacity(
-                  opacity: _opacity,
-                  duration: const Duration(milliseconds: 200),
-                  child: CategoriasSection(mostrar: mostrarCategorias),
-                ),
-              const SizedBox(height: 6),
-
-              ProdutoSearchBar(
-                onChanged: (valor) => setState(() => filtroNome = valor),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Lista de produtos
-              Expanded(
-                child: Consumer2<ProductsNotifier, FavoritosProvider>(
-                  builder: (context, productsNotifier, favoritosProvider, _) {
-                    return ProdutosSection(
-                      filtroNome: filtroNome,
-                      acompanhamentos: acompanhamentos,
-                      scrollController: _scrollController,
-                    );
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

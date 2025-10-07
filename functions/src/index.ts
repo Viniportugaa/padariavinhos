@@ -2,17 +2,19 @@
 import * as admin from "firebase-admin";
 admin.initializeApp();
 
-// Imports
-import { notifyAdminNewPedido } from "./adminovopedido";
-import { clearTokensOnRoleChange } from "./limparTokenstrocaRole";
-import { notifyPedidoCliente } from "./notifyPedidoCliente";
+// Imports das triggers
+import { sendNewPedidoNotification } from "./sendNewPedidoNotification";
+import { buildNotification } from "./buildNotification";
+import { notifyAdminNewPedido } from "./notifyAdminNewPedido"
+// Exports das triggers
+export {
+  sendNewPedidoNotification
+};
 
-// Exports centralizados
+export {
+    buildNotification
+};
+
 export {
   notifyAdminNewPedido,
-  clearTokensOnRoleChange,
-  notifyPedidoCliente,
-
-  // notifyPedidoStatusChange,
-  // notifyProdutoDisponivel,
 };

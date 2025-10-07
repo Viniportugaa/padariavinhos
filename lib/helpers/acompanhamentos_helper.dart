@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/acompanhamento.dart';
+import 'package:padariavinhos/models/produto.dart';
+
+class AcompanhamentoHelper {
+  static List<Acompanhamento> filtrarAcompanhamentosDoProduto({
+    required Produto produto,
+    required List<Acompanhamento> acompanhamentosDisponiveis,
+  }) {
+    return acompanhamentosDisponiveis
+        .where((a) => produto.acompanhamentosIds.contains(a.id))
+        .toList();
+  }
+}
 
 Future<List<Acompanhamento>?> selecionarAcompanhamentos({
   required BuildContext context,

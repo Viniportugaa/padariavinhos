@@ -82,6 +82,11 @@ class MenuAdmin extends StatelessWidget {
                   ),
                   _buildCard(
                     context,
+                    _MenuItem('Cupons', Icons.monetization_on, Colors.blueAccent, '/cupomadmin',
+                        corCard: Colors.purpleAccent),
+                  ),
+                  _buildCard(
+                    context,
                     _MenuItem('Categorias', Icons.category, Colors.indigo, '/categoriadmin',
                         corCard: Colors.indigo),
                   ),

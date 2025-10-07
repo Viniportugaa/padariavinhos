@@ -2,6 +2,7 @@ import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:padariavinhos/models/cupom.dart';
 
 class Pedido {
   final int numeroPedido;
@@ -10,7 +11,7 @@ class Pedido {
   final String nomeUsuario;
   final String telefone;
   final List<ItemCarrinho> itens;
-  final double totalFinal; // 🔹 agora sempre calculado
+  final double totalFinal;
   String status;
   final DateTime data;
   bool impresso;
@@ -19,6 +20,10 @@ class Pedido {
   final double frete;
   final String tipoEntrega;
   final DateTime? dataHoraEntrega;
+  final Cupom? cupomAplicado;
+
+  final double? valorPago;
+  final double? troco;
 
   Pedido({
     required this.id,
@@ -36,7 +41,10 @@ class Pedido {
     this.frete = 4.0,
     required this.tipoEntrega,
     this.dataHoraEntrega,
-  }) : totalFinal = totalFinal ?? _calcularTotalFinal(itens, frete);
+    this.cupomAplicado,
+    this.valorPago,
+    this.troco,
+  }) : totalFinal = totalFinal ?? _calcularTotalFinal(itens, frete, cupomAplicado);
 
   /// Subtotal coerente (cada item calcula subtotal com PrecoHelper)
   double get subtotal {
@@ -50,21 +58,31 @@ class Pedido {
     });
   }
 
-  /// Total final já com frete
-  double get totalComFrete => subtotal + frete;
 
-  static double _calcularTotalFinal(List<ItemCarrinho> itens, double frete) {
-    double total = 0.0;
+  static double _calcularTotalFinal(List<ItemCarrinho> itens, double frete, Cupom? cupom) {
+    double subtotal = 0.0;
     for (var item in itens) {
       final precoUnitario = item.precoUnitarioCustom ??
           PrecoHelper.calcularPrecoUnitario(
             produto: item.produto,
             selecionados: item.acompanhamentos,
           );
-      total += precoUnitario * item.quantidade;
+      subtotal += precoUnitario * item.quantidade;
     }
-    return total + frete;
+    double total = subtotal + frete;
+    if (cupom != null) {
+      if (cupom.percentual) {
+        total -= total * (cupom.desconto / 100);
+      } else {
+        total -= cupom.desconto;
+      }
+      if (total < 0) total = 0; // nunca negativo
+    }
+
+    return total;
   }
+
+
 
   DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
     return DateTime(
@@ -82,7 +100,20 @@ class Pedido {
         .toList();
 
     final frete = (map['frete'] != null) ? (map['frete'] as num).toDouble() : 4.0;
-
+    Cupom? cupom;
+    if (map['cupomAplicado'] != null) {
+      cupom = Cupom.fromMap(map['cupomAplicado'], 'inline');
+    }
+    final subtotal = (map['subtotal'] != null)
+        ? (map['subtotal'] as num).toDouble()
+        : itens.fold(0.0, (sum, item) {
+      final precoUnitario = item.precoUnitarioCustom ??
+          PrecoHelper.calcularPrecoUnitario(
+            produto: item.produto,
+            selecionados: item.acompanhamentos,
+          );
+      return sum + (precoUnitario * item.quantidade);
+    });
     return Pedido(
       id: id,
       numeroPedido: map['numeroPedido'] ?? 0,
@@ -92,7 +123,7 @@ class Pedido {
       itens: itens,
       totalFinal: (map['totalFinal'] != null)
           ? (map['totalFinal'] as num).toDouble()
-          : _calcularTotalFinal(itens, frete),
+          : _calcularTotalFinal(itens, frete, cupom),
       status: map['status'] ?? 'pendente',
       data: (map['data'] is Timestamp)
           ? (map['data'] as Timestamp).toDate()
@@ -105,6 +136,10 @@ class Pedido {
       dataHoraEntrega: map['dataHoraEntrega'] != null
           ? (map['dataHoraEntrega'] as Timestamp).toDate()
           : null,
+      cupomAplicado: cupom,
+      valorPago: (map['valorPago'] as num?)?.toDouble(),
+      troco: (map['troco'] as num?)?.toDouble(),
+
     );
   }
 
@@ -116,7 +151,8 @@ class Pedido {
       'telefone': telefone,
       'itens': itens.map((item) => item.toMap()).toList(),
       'frete': frete,
-      'totalFinal': totalFinal, // 🔹 agora sempre correto
+      'subtotal': subtotal,
+      'totalFinal': totalFinal,
       'status': status,
       'data': Timestamp.fromDate(data),
       'impresso': impresso,
@@ -125,6 +161,9 @@ class Pedido {
       'tipoEntrega': tipoEntrega,
       'dataHoraEntrega':
       dataHoraEntrega != null ? Timestamp.fromDate(dataHoraEntrega!) : null,
+      'cupomAplicado': cupomAplicado?.toMap(),
+      'valorPago': valorPago,
+      'troco': troco,
     };
   }
 }

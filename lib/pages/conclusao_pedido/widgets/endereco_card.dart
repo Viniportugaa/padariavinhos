@@ -27,10 +27,13 @@ class EnderecoCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  endereco,
+                  (endereco.isNotEmpty)
+                      ? endereco
+                      : 'Endereço não cadastrado. Toque para adicionar.',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
+                    color: Colors.black54,
                   ),
                 ),
               ),

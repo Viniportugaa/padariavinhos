@@ -14,13 +14,10 @@ class ListaPedidosPage extends StatefulWidget {
 
 class _ListaPedidosPageState extends State<ListaPedidosPage> {
   String filtro = 'hoje';
-
-  // Cache de usuários
   final Map<String, User> _usuariosCache = {};
 
   Stream<QuerySnapshot> _pedidosStream() {
     final hoje = DateTime.now();
-
     Query query = FirebaseFirestore.instance
         .collection('pedidos')
         .orderBy('data', descending: true);
@@ -54,12 +51,12 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lista de Pedidos'),
+        title: const Text('Pedidos'),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) => setState(() => filtro = value),
-            itemBuilder: (context) => const [
+            itemBuilder: (_) => const [
               PopupMenuItem(value: 'hoje', child: Text('Hoje')),
               PopupMenuItem(value: 'semana', child: Text('Essa Semana')),
               PopupMenuItem(value: 'todos', child: Text('Todos')),
@@ -68,9 +65,7 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
           IconButton(
             icon: const Icon(Icons.bar_chart),
             tooltip: 'Relatório de Clientes',
-            onPressed: () {
-              context.push('/relatorio-clientes');
-            },
+            onPressed: () => context.push('/relatorio-clientes'),
           ),
         ],
       ),
@@ -82,27 +77,29 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Nenhum pedido encontrado.'));
+            return const Center(
+              child: Text(
+                'Nenhum pedido encontrado.',
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+            );
           }
 
           final pedidos = snapshot.data!.docs
               .map((doc) => Pedido.fromMap(doc.data() as Map<String, dynamic>, doc.id))
               .toList();
 
-          return ListView.builder(
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
             itemCount: pedidos.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final pedido = pedidos[index];
-
               return FutureBuilder<User?>(
                 future: _getUsuario(pedido.userId),
                 builder: (context, snapshotUsuario) {
                   final usuario = snapshotUsuario.data;
-
-                  return PedidoCard(
-                    pedido: pedido,
-                    usuario: usuario,
-                  );
+                  return PedidoCard(pedido: pedido, usuario: usuario);
                 },
               );
             },

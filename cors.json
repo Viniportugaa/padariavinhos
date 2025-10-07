@@ -1,7 +1,11 @@
 [
   {
-    "origin": ["*"],
+    "origin": [
+      "https://padariavinhos-1f842.web.app",
+      "https://padariavinhos-1f842.firebaseapp.com"
+    ],
     "method": ["GET"],
-    "maxAgeSeconds": 3600
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type"]
   }
 ]

@@ -352,7 +352,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
     final soma = pedidos.fold<double>(
       0.0,
           (anterior, pedido) =>
-      anterior + (pedido.totalFinal ?? pedido.totalComFrete),
+      anterior + pedido.totalFinal ,
     );
 
     return soma / pedidos.length;

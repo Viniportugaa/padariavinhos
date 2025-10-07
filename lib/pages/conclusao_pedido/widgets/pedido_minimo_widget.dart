@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:padariavinhos/pages/conclusao_pedido/controller/conclusao_pedido_controller.dart';
 
 class PedidoMinimoAviso extends StatelessWidget {
   final double valorMinimo;
+  final TipoEntrega tipoEntrega;
 
-  const PedidoMinimoAviso({super.key, required this.valorMinimo});
+  const PedidoMinimoAviso({
+    super.key,
+    required this.valorMinimo,
+    required this.tipoEntrega,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (tipoEntrega != TipoEntrega.entrega) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),

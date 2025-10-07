@@ -1,9 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:padariavinhos/widgets/menu_button.dart';
 import 'package:padariavinhos/widgets/auth_panel.dart';
+import 'package:padariavinhos/widgets/custom_popup.dart';
 
-class MenuInicial extends StatelessWidget {
+class MenuInicial extends StatefulWidget {
   const MenuInicial({super.key});
+
+  @override
+  State<MenuInicial> createState() => _MenuInicialState();
+}
+
+class _MenuInicialState extends State<MenuInicial> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CustomDialog.showInfo(
+        context,
+        title: "Aviso Especial",
+        message: "Hoje tem frango na Padaria!",
+        color: Colors.red,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

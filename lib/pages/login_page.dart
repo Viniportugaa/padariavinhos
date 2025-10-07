@@ -38,17 +38,21 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
+      final authNotifier = context.read<AuthNotifier>();
       final authService = AuthService();
-      final role = await authService.loginWithEmail(
-        emailController.text,
-        passwordController.text,
+
+      final user = await authService.loginWithEmail(
+        emailController.text.trim(),
+        passwordController.text.trim(),
       );
 
-      final authNotifier = context.read<AuthNotifier>();
-      await authNotifier.login();
+      if (user == null) throw Exception("Erro ao carregar dados do usuário");
+
+      await authNotifier.setUser(user);
 
       if (!mounted) return;
-      context.go(role == 'admin' ? '/admin' : '/menu');
+
+      context.go(user.role == 'admin' ? '/admin' : '/menu');
 
     } on FirebaseAuthException catch (e) {
       DialogHelper.showTemporaryToast(context, e.message ?? 'Erro no login');
