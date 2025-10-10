@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/produto.dart';
 import '../../services/product_service.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class CadastroProdutoPage extends StatefulWidget {
   final Produto? produto;
@@ -31,7 +33,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   ];
   String? _categoriaSelecionada;
 
-  List<File> _novasImagens = [];
+  List<dynamic> _novasImagens = [];
   List<String> _imagensExistentes = [];
 
   @override
@@ -53,12 +55,23 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage(imageQuality: 75);
 
-    if (pickedFiles != null) {
+    if (pickedFiles.isEmpty) return;
+
+    if (kIsWeb) {
+      final List<Uint8List> webImages = [];
+      for (var file in pickedFiles) {
+        webImages.add(await file.readAsBytes());
+      }
       setState(() {
-        _novasImagens.addAll(pickedFiles.map((file) => File(file.path)).toList());
+        _novasImagens.addAll(webImages);
+      });
+    } else {
+      setState(() {
+        _novasImagens.addAll(pickedFiles.map((f) => File(f.path)));
       });
     }
   }
+
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -264,7 +277,12 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
                   borderRadius: BorderRadius.circular(8),
                   child: isUrl
                       ? Image.network(imagePath, fit: BoxFit.cover, width: double.infinity)
-                      : Image.file(File(imagePath), fit: BoxFit.cover, width: double.infinity),
+                      : (kIsWeb
+                      ? Image.memory(_novasImagens[index - _imagensExistentes.length],
+                      fit: BoxFit.cover, width: double.infinity)
+                      : Image.file(_novasImagens[index - _imagensExistentes.length],
+                      fit: BoxFit.cover, width: double.infinity)),
+
                 ),
                 Positioned(
                   top: 4,

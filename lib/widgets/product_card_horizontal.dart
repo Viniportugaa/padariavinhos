@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/provider/favoritos_provider.dart';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:padariavinhos/services/firebase_storage_service.dart'; // função getProdutoImageUrl
+import 'package:go_router/go_router.dart';
 
 class ProductCardHorizontal extends StatefulWidget {
   final Produto produto;
@@ -87,37 +86,46 @@ class _ProductCardHorizontalState extends State<ProductCardHorizontal> {
                     children: [
                       GestureDetector(
                         onTap: widget.onViewDetails,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: isLoadingImage
-                              ? Container(
-                            height: 100,
-                            width: 100,
-                            color: Colors.grey[300],
-                            child: const Center(child: CircularProgressIndicator()),
-                          )
-                              : imageUrl != null
-                              ? Image.network(
-                            imageUrl!,
-                            height: 100,
-                            width: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
+                        child: Hero(
+                          tag: widget.produto.id, // mesmo tag do ImagemProdutoPage
+                          child: GestureDetector(
+                            onTap: () {
+                              context.push('/imagem-produto', extra: widget.produto);
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: isLoadingImage
+                                  ? Container(
+                                height: 100,
+                                width: 100,
+                                color: Colors.grey[300],
+                                child: const Center(child: CircularProgressIndicator()),
+                              )
+                                  : imageUrl != null
+                                  ? Image.network(
+                                imageUrl!,
+                                height: 100,
+                                width: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 100,
+                                    width: 100,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.broken_image, size: 50),
+                                  );
+                                },
+                              )
+                                  : Container(
                                 height: 100,
                                 width: 100,
                                 color: Colors.grey[300],
                                 child: const Icon(Icons.broken_image, size: 50),
-                              );
-                            },
-                          )
-                              : Container(
-                            height: 100,
-                            width: 100,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image, size: 50),
+                              ),
+                            ),
                           ),
                         ),
+
                       ),
                       if (widget.produto.vendidoPorPeso)
                         Positioned(

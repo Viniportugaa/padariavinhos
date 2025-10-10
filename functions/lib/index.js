@@ -33,14 +33,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyAdminNewPedido = exports.buildNotification = exports.sendNewPedidoNotification = void 0;
-// index.ts
+exports.notifyAdminPedidosPendentesHoje = exports.notifyUserPedidoStatusChange = exports.notifyAdminNewPedido = exports.buildNotification = exports.sendNewPedidoNotification = void 0;
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
-// Imports das triggers
 const sendNewPedidoNotification_1 = require("./sendNewPedidoNotification");
 Object.defineProperty(exports, "sendNewPedidoNotification", { enumerable: true, get: function () { return sendNewPedidoNotification_1.sendNewPedidoNotification; } });
 const buildNotification_1 = require("./buildNotification");
 Object.defineProperty(exports, "buildNotification", { enumerable: true, get: function () { return buildNotification_1.buildNotification; } });
 const notifyAdminNewPedido_1 = require("./notifyAdminNewPedido");
 Object.defineProperty(exports, "notifyAdminNewPedido", { enumerable: true, get: function () { return notifyAdminNewPedido_1.notifyAdminNewPedido; } });
+const notifyUserPedidoStatusChange_1 = require("./notifyUserPedidoStatusChange");
+Object.defineProperty(exports, "notifyUserPedidoStatusChange", { enumerable: true, get: function () { return notifyUserPedidoStatusChange_1.notifyUserPedidoStatusChange; } });
+const notifyAdminPedidosPendentesHoje_1 = require("./notifyAdminPedidosPendentesHoje");
+Object.defineProperty(exports, "notifyAdminPedidosPendentesHoje", { enumerable: true, get: function () { return notifyAdminPedidosPendentesHoje_1.notifyAdminPedidosPendentesHoje; } });

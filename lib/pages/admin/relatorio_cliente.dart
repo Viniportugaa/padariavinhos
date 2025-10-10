@@ -3,207 +3,243 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/user.dart';
 import 'package:padariavinhos/models/pedido.dart';
 
-class RelatorioClientesPage extends StatelessWidget {
+class RelatorioClientesPage extends StatefulWidget {
   const RelatorioClientesPage({super.key});
 
+  @override
+  State<RelatorioClientesPage> createState() => _RelatorioClientesPageState();
+}
+
+class _RelatorioClientesPageState extends State<RelatorioClientesPage> {
+  late Future<Map<String, dynamic>> _relatorioFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _relatorioFuture = _buscarRelatorio();
+  }
+
   Future<Map<String, dynamic>> _buscarRelatorio() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('pedidos')
-        .where('status', isEqualTo: 'finalizado')
-        .get();
-
-    final Map<String, double> totais = {};
-    final Map<String, User> usuarios = {};
-
-    // Usa Future.wait para buscar usuários em paralelo
-    final futures = snapshot.docs.map((doc) async {
-      final pedido = Pedido.fromMap(doc.data(), doc.id);
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(pedido.userId)
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('pedidos')
+          .where('status', isEqualTo: 'finalizado')
           .get();
 
-      if (userDoc.exists) {
-        final user = User.fromMap(userDoc.data()!);
-        usuarios[pedido.userId] = user;
+      final Map<String, double> totais = {};
+      final Map<String, User> usuarios = {};
+
+      // Busca todos os usuários distintos de uma vez só
+      final userIds = snapshot.docs.map((e) => e['userId'] as String).toSet();
+
+      final userDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: userIds.toList())
+          .get();
+
+      for (var doc in userDocs.docs) {
+        usuarios[doc.id] = User.fromMap(doc.data());
+      }
+
+      for (var doc in snapshot.docs) {
+        final pedido = Pedido.fromMap(doc.data(), doc.id);
         totais[pedido.userId] =
             (totais[pedido.userId] ?? 0) + (pedido.totalFinal ?? 0);
       }
-    }).toList();
 
-    await Future.wait(futures);
-
-    return {"usuarios": usuarios, "totais": totais};
+      return {"usuarios": usuarios, "totais": totais};
+    } catch (e) {
+      debugPrint("Erro ao buscar relatório: $e");
+      return {"usuarios": {}, "totais": {}};
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         title: const Text("Relatório de Clientes"),
+        centerTitle: true,
+        elevation: 4,
+        backgroundColor: Colors.green.shade700,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _buscarRelatorio(),
+        future: _relatorioFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData ||
-              (snapshot.data!['usuarios'] as Map).isEmpty) {
-            return const Center(child: Text("Nenhum dado encontrado."));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.green),
+            );
           }
 
-          final usuarios = snapshot.data!['usuarios'] as Map<String, User>;
-          final totais = snapshot.data!['totais'] as Map<String, double>;
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Erro ao carregar dados: ${snapshot.error}",
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          final usuarios = snapshot.data?['usuarios'] as Map<String, User>? ?? {};
+          final totais = snapshot.data?['totais'] as Map<String, double>? ?? {};
+
+          if (usuarios.isEmpty) {
+            return const Center(
+              child: Text(
+                "Nenhum dado encontrado.",
+                style: TextStyle(fontSize: 18),
+              ),
+            );
+          }
 
           final lista = usuarios.entries.toList()
-            ..sort((a, b) =>
-                (totais[b.key] ?? 0).compareTo(totais[a.key] ?? 0));
+            ..sort(
+                  (a, b) => (totais[b.key] ?? 0).compareTo(totais[a.key] ?? 0),
+            );
 
           final totalGeral =
           totais.values.fold<double>(0, (soma, val) => soma + val);
 
-          return Column(
-            children: [
-              // Cabeçalho com resumo geral
-              Card(
-                margin: const EdgeInsets.all(16),
-                color: Colors.green.shade50,
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Resumo Geral",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Total Faturado:",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          Text(
-                            "R\$ ${totalGeral.toStringAsFixed(2)}",
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Clientes Ativos:",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          Text(
-                            "${usuarios.length}",
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() => _relatorioFuture = _buscarRelatorio());
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildResumoCard(totalGeral, usuarios.length),
+                const SizedBox(height: 20),
+                const Text(
+                  "🏆 Ranking de Clientes",
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87),
                 ),
-              ),
-
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Ranking de Clientes",
-                    style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-
-              // Lista de clientes
-              Expanded(
-                child: ListView.separated(
-                  itemCount: lista.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final userId = lista[index].key;
-                    final usuario = lista[index].value;
-                    final total = totais[userId] ?? 0;
-
-                    return Card(
-                      margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.green.shade100,
-                          child: Text(
-                            usuario.nome.isNotEmpty
-                                ? usuario.nome[0].toUpperCase()
-                                : "?",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        title: Text(
-                          usuario.nome,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (usuario.email.isNotEmpty)
-                              Text("Email: ${usuario.email}"),
-                            if (usuario.telefone.isNotEmpty)
-                              Text("Tel: ${usuario.telefone}"),
-                          ],
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "R\$ ${total.toStringAsFixed(2)}",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: index == 0
-                                      ? Colors.green.shade800
-                                      : Colors.black87),
-                            ),
-                            if (index == 0)
-                              const Text(
-                                "TOP 1",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                _buildDataTable(lista, totais),
+              ],
+            ),
           );
         },
       ),
     );
+  }
+
+  Widget _buildResumoCard(double totalGeral, int clientesAtivos) {
+    return Card(
+      elevation: 3,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "📊 Resumo Geral",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Total Faturado:",
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                Text(
+                  "R\$ ${totalGeral.toStringAsFixed(2)}",
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Clientes Ativos:",
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                Text(
+                  "$clientesAtivos",
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataTable(
+      List<MapEntry<String, User>> lista, Map<String, double> totais) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 16,
+          horizontalMargin: 16,
+          headingRowColor:
+          WidgetStateProperty.all(Colors.green.shade50.withOpacity(0.9)),
+          border: TableBorder.symmetric(
+              inside: const BorderSide(color: Colors.grey, width: 0.1)),
+          columns: const [
+            DataColumn(label: Text("Posição")),
+            DataColumn(label: Text("Cliente")),
+            DataColumn(label: Text("Email")),
+            DataColumn(label: Text("Telefone")),
+            DataColumn(label: Text("Total Comprado")),
+          ],
+          rows: List.generate(lista.length, (index) {
+            final userId = lista[index].key;
+            final usuario = lista[index].value;
+            final total = totais[userId] ?? 0;
+            final rankColor = _rankColor(index);
+
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text(
+                    "#${index + 1}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: rankColor,
+                    ),
+                  ),
+                ),
+                DataCell(Text(usuario.nome.isNotEmpty ? usuario.nome : "—")),
+                DataCell(Text(usuario.email.isNotEmpty ? usuario.email : "—")),
+                DataCell(
+                    Text(usuario.telefone.isNotEmpty ? usuario.telefone : "—")),
+                DataCell(Text(
+                  "R\$ ${total.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontWeight:
+                    index == 0 ? FontWeight.bold : FontWeight.normal,
+                    color: rankColor,
+                  ),
+                )),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Color _rankColor(int index) {
+    if (index == 0) return Colors.green.shade800;
+    if (index == 1) return Colors.green.shade600;
+    if (index == 2) return Colors.green.shade400;
+    return Colors.black87;
   }
 }

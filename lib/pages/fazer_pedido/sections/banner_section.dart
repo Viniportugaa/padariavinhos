@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/widgets/banner_carousel.dart';
-import 'package:padariavinhos/pages/product_detalhe_page.dart';
 import 'package:padariavinhos/notifiers/products_notifier.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/pages/fazer_pedido/add_to_cart_sheet.dart';
 import 'package:collection/collection.dart';
-
 
 class BannerSection extends StatefulWidget {
   final List<Acompanhamento> acompanhamentos;

@@ -35,35 +35,31 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-          CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-        );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
 
-    _controller.forward();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _waitForAuthAndNavigate();
-    });
+    _startSequence();
   }
 
-  Future<void> _waitForAuthAndNavigate() async {
-    final auth = Provider.of<AuthNotifier>(context, listen: false);
+  Future<void> _startSequence() async {
+    final auth = context.read<AuthNotifier>();
 
-    // 🔹 espera splash + carregamento do usuário
-    while (!auth.splashFinished || auth.isLoading) {
+    // 🔹 1. Executa a animação do logo
+    await _controller.forward();
+
+    // 🔹 2. Espera o AuthNotifier terminar de carregar o usuário
+    while (auth.isLoading) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    if (!mounted) return;
-
-    // 🔹 Navegação
-    if (!auth.isAuthenticated) {
-      context.go('/login');
-    } else if (auth.role == 'admin') {
-      context.go('/admin');
-    } else {
-      context.go('/menu');
+    // 🔹 3. Marca o splash como finalizado (GoRouter agora pode redirecionar)
+    if (mounted) {
+      auth.splashFinished = true;
+      auth.notifyListeners();
     }
   }
 
@@ -121,8 +117,6 @@ class _SplashScreenState extends State<SplashScreen>
               opacity: _opacityAnimation,
               child: Column(
                 children: [
-                  const AuthStatusPanel(),
-                  const SizedBox(height: 8),
                   if (auth.systemMessage != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),

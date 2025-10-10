@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Cupom {
   final String id;
   final String codigo;
-  final double desconto; // pode ser valor fixo
-  final bool percentual; // se true, desconto é %
+  final double desconto;
+  final bool percentual;
   final DateTime validade;
   final bool ativo;
   final List<String> usuariosUsaram;

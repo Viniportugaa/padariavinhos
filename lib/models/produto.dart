@@ -29,14 +29,13 @@ class Produto {
   });
 
   factory Produto.fromMap(Map<String, dynamic> map, String id, {List<Acompanhamento>? acompanhamentosDisponiveis, List<Acompanhamento>? acompanhamentosSelecionados}) {
-    List<String> imagens = [];
-    final dynamic imageField = map['imageUrl'];
+    final dynamic imgField = map['imageUrl'];
 
-    if (imageField is String) {
-      imagens = [imageField];
-    } else if (imageField is List) {
-      imagens = List<String>.from(imageField);
-    }
+    final List<String> imagens = imgField is List
+        ? List<String>.from(imgField)
+        : imgField is String && imgField.isNotEmpty
+        ? [imgField]
+        : [];
 
     return Produto(
       id:          id,

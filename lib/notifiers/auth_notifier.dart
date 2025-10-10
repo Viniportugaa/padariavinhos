@@ -54,7 +54,6 @@ class AuthNotifier extends ChangeNotifier {
       if (!_isOnline) {
         systemMessage = "Sem conexão com a internet";
         _isLoading = false;
-        splashFinished = true;
         notifyListeners();
         return;
       }
@@ -85,7 +84,6 @@ class AuthNotifier extends ChangeNotifier {
       }
 
       _isLoading = false;
-      splashFinished = true;
       notifyListeners();
     });
   }

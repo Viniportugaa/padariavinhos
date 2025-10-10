@@ -617,7 +617,6 @@ class ConclusaoPedidoController extends ChangeNotifier {
         cupomAplicado: _cupomAplicado,
         valorPago: _formaPagamento == 'Dinheiro' ? _valorPago : null,
         troco: _formaPagamento == 'Dinheiro' ? _troco : null,
-
       );
 
       await _pedidoService.criarPedido(pedido);

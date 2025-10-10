@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
+import 'package:padariavinhos/pages/local/painel_balcao_page.dart';
+import 'package:padariavinhos/pages/local/pedido_local_page.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
 import 'package:padariavinhos/pages/admin/cadastro_acompanhamento_page.dart';
@@ -19,7 +21,6 @@ import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/helpers/transitions.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
-import 'package:padariavinhos/pages/product_detalhe_page.dart';
 import 'package:padariavinhos/pages/LGPD_page.dart';
 import 'package:padariavinhos/widgets/imagem_produto.dart';
 import 'package:padariavinhos/models/produto.dart';
@@ -30,6 +31,8 @@ import 'package:padariavinhos/pages/admin/relatorio_page.dart';
 import 'package:padariavinhos/pages/admin/relatorio_cliente.dart';
 import 'package:padariavinhos/custom_shell.dart';
 import 'package:padariavinhos/pages/admin/cupons_admin_page.dart';
+import 'package:padariavinhos/widgets/imagem_produto.dart';
+
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -89,10 +92,19 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       ),
 
       GoRoute(
-        path: '/produto/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ProductDetailPage(produtoId: id);
+        path: '/imagem-produto',
+        pageBuilder: (context, state) {
+          final produto = state.extra as Produto;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: ImagemProdutoPage(produto: produto),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+          );
         },
       ),
 
@@ -112,6 +124,18 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         path: '/relatorio-clientes',
         pageBuilder: (context, state) =>
             scaleTransitionPage(child: RelatorioClientesPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/local2',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: PedidoLocalPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/local',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: PainelBalcaoPage(), state: state),
       ),
 
       GoRoute(
@@ -149,7 +173,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/lgpd',
         pageBuilder: (context, state) =>
-            scaleTransitionPage(child: const PDFScreen(), state: state),
+            scaleTransitionPage(child: const PoliticaPrivacidadePage(), state: state),
       ),
       GoRoute(
         path: '/cadastro-produto',

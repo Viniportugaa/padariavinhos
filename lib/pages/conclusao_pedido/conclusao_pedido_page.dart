@@ -1,4 +1,3 @@
-// concluicao_pedido_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/controller/conclusao_pedido_controller.dart';
@@ -13,6 +12,7 @@ import 'package:padariavinhos/pages/conclusao_pedido/widgets/pedido_minimo_widge
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/cupom_input.dart';
 import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/sugestoes_tab.dart';
+import 'package:padariavinhos/helpers/aberto_conclusao_check.dart';
 
 class ConclusaoPedidoPage extends StatelessWidget {
   const ConclusaoPedidoPage({super.key});
@@ -37,7 +37,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
     final carrinho = Provider.of<CarrinhoProvider>(context);
     final authNotifier = Provider.of<AuthNotifier>(context);
     final user = authNotifier.user;
-
+    final origem = "app";
     if (user == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -65,7 +65,6 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
 
     final valorTotal = pedidoPreview.totalFinal;
 
-    // valida alcance só para entrega
     final dentroAlcance = controller.tipoEntrega == TipoEntrega.entrega
         ? PedidoValidador.validarAlcance(
       user.latitude,
@@ -73,147 +72,153 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
     )
         : true;
 
-    // pedido válido se atende valor mínimo e alcance
     final pedidoOk = controller.tipoEntrega == TipoEntrega.entrega
         ? (PedidoValidador.validarValor(valorTotal) && dentroAlcance)
         : true;
 
-    return Scaffold(
-      backgroundColor: Colors.black45,
+    return AbertoConclusaoChecker(
+        child: Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('Confirmar Pedido'),
-        backgroundColor: Colors.deepOrange,
+        backgroundColor: Colors.redAccent,
+        elevation: 0,
       ),
-      body: SafeArea(
-        child: carrinho.itens.isEmpty
-            ? const Center(
-          child: Text(
-            'Seu carrinho está vazio.',
-            style: TextStyle(color: Colors.white),
-          ),
-        )
-            : SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Voltar'),
-              ),
-              const SizedBox(height: 16),
-              controller.buildTipoEntrega(context),
-              const SizedBox(height: 16),
-              EnderecoCard(
-                endereco: user.enderecoFormatado,
-                goToPath: '/opcoes',
-              ),
-              const SizedBox(height: 8),
-
-              if (controller.tipoEntrega == TipoEntrega.entrega && !dentroAlcance)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.red, width: 1.2),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Voltar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_off, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Seu endereço pode estar fora da área de entrega '
-                              '(${PedidoValidador.alcanceKm.toStringAsFixed(1)} km).',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
+                ),
+                const SizedBox(height: 16),
+                controller.buildTipoEntrega(context),
+                const SizedBox(height: 16),
+                EnderecoCard(
+                  endereco: user.enderecoFormatado,
+                  goToPath: '/opcoes',
+                ),
+                const SizedBox(height: 8),
+                if (controller.tipoEntrega == TipoEntrega.entrega &&
+                    !dentroAlcance)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      border: Border.all(color: Colors.red, width: 1.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_off, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Seu endereço pode estar fora da área de entrega '
+                                '(${PedidoValidador.alcanceKm.toStringAsFixed(1)} km).',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Sugestões para você",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-
-              const SizedBox(height: 16),
-
-              /// 🔹 SUGESTÕES
-              const Text(
-                "Sugestões para você",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                const SizedBox(height: 8),
+                SugestoesTab(
+                  sugestoes: controller.sugestoesProdutos,
+                  acompanhamentosDisponiveis: controller.acompanhamentos,
                 ),
-              ),
-              const SizedBox(height: 8),
-              SugestoesTab(
-                sugestoes: controller.sugestoesProdutos,
-                acompanhamentosDisponiveis: controller.acompanhamentos,
-              ),
-              const SizedBox(height: 16),
-              PagamentoSelector(controller: controller,carrinho: Provider.of<CarrinhoProvider>(context)),
-              const SizedBox(height: 16),
-              const Text(
-                'Itens do Carrinho',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                const SizedBox(height: 16),
+                PagamentoSelector(controller: controller, carrinho: carrinho),
+                const SizedBox(height: 16),
+                const Text(
+                  'Itens do Carrinho',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: carrinho.itens.length,
-                itemBuilder: (context, index) {
-                  final item = carrinho.itens[index];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white),
-                    ),
-                    child: CarrinhoItemCard(
-                      item: item,
-                      index: index,
-                      carrinho: carrinho,
-                      controller: controller,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              const CupomInput(),
-              const SizedBox(height: 16),
-              _buildTotais(pedidoPreview),
-              const SizedBox(height: 16),
-              if (controller.tipoEntrega == TipoEntrega.entrega &&
-                  !PedidoValidador.validarValor(valorTotal))
-                PedidoMinimoAviso(
-                  valorMinimo: PedidoValidador.valorMinimo,
-                  tipoEntrega: controller.tipoEntrega,
+                const SizedBox(height: 8),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: carrinho.itens.length,
+                  itemBuilder: (context, index) {
+                    final item = carrinho.itens[index];
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: CarrinhoItemCard(
+                        item: item,
+                        index: index,
+                        carrinho: carrinho,
+                        controller: controller,
+                      ),
+                    );
+                  },
                 ),
-              SizedBox(
-                width: double.infinity,
+                const SizedBox(height: 16),
+                const CupomInput(),
+                const SizedBox(height: 16),
+                _buildTotais(pedidoPreview),
+                const SizedBox(height: 16),
+                if (controller.tipoEntrega == TipoEntrega.entrega &&
+                    !PedidoValidador.validarValor(valorTotal))
+                  PedidoMinimoAviso(
+                    valorMinimo: PedidoValidador.valorMinimo,
+                    tipoEntrega: controller.tipoEntrega,
+                  ),
+              ],
+            ),
+          ),
+          // Botão flutuante acima do nav bar
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: pedidoOk
-                        ? Colors.deepOrangeAccent.withOpacity(0.95)
-                        : Colors.grey,
+                    backgroundColor:
+                    pedidoOk ? Colors.greenAccent : Colors.grey,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -226,25 +231,34 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                     authNotifier,
                   ),
                   child: controller.isLoading
-                      ? const CircularProgressIndicator(
-                    color: Colors.white,
-                  )
-                      : const Text(
-                    'Finalizar Pedido',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'R\$ ${valorTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'Finalizar Pedido',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
+        ),
     );
   }
+}
 
   Widget _buildTotais(Pedido pedido) {
     return Container(
@@ -252,7 +266,13 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -260,19 +280,19 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
           const SizedBox(height: 8),
           _buildTotalRow('Frete', pedido.frete),
           if (pedido.cupomAplicado != null) ...[
-            const Divider(color: Colors.black),
+            const Divider(color: Colors.black26),
             _buildTotalRow(
               'Desconto (${pedido.cupomAplicado!.codigo})',
               (pedido.subtotal + pedido.frete) - pedido.totalFinal,
               valueColor: Colors.red,
             ),
           ],
-          const Divider(color: Colors.black),
+          const Divider(color: Colors.black26),
           _buildTotalRow(
             'Total',
             pedido.totalFinal,
             isBold: true,
-            valueColor: Colors.green,
+            valueColor: Colors.green.shade700,
           ),
         ],
       ),
@@ -293,7 +313,6 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            color: Colors.black,
           ),
         ),
         Text(
@@ -307,4 +326,3 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
       ],
     );
   }
-}

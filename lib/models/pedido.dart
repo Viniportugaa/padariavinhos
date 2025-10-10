@@ -25,6 +25,7 @@ class Pedido {
   final double? valorPago;
   final double? troco;
 
+
   Pedido({
     required this.id,
     required this.numeroPedido,
@@ -44,6 +45,7 @@ class Pedido {
     this.cupomAplicado,
     this.valorPago,
     this.troco,
+
   }) : totalFinal = totalFinal ?? _calcularTotalFinal(itens, frete, cupomAplicado);
 
   /// Subtotal coerente (cada item calcula subtotal com PrecoHelper)
@@ -139,7 +141,6 @@ class Pedido {
       cupomAplicado: cupom,
       valorPago: (map['valorPago'] as num?)?.toDouble(),
       troco: (map['troco'] as num?)?.toDouble(),
-
     );
   }
 
@@ -164,6 +165,7 @@ class Pedido {
       'cupomAplicado': cupomAplicado?.toMap(),
       'valorPago': valorPago,
       'troco': troco,
+
     };
   }
 }

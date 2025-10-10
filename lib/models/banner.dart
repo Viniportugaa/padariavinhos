@@ -1,7 +1,7 @@
 class BannerModel {
   final String id;
   final String imageUrl;
-  final String? produtoId; // ID do produto vinculado
+  final String? produtoId;
 
   BannerModel({required this.id, required this.imageUrl, this.produtoId});
 

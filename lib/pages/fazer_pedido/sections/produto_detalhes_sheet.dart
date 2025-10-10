@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/pages/fazer_pedido/add_to_cart_sheet.dart';
+import 'package:go_router/go_router.dart';
 
 void showProdutoDetalhesSheet(
     BuildContext context,
@@ -19,11 +20,15 @@ void showProdutoDetalhesSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.of(context).size.height * 0.85,
+    ),
+
     builder: (context) {
       return SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 80,
             left: 16,
             right: 16,
             top: 32,
@@ -33,53 +38,64 @@ void showProdutoDetalhesSheet(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10)),
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Imagem com gradiente
                 if (produto.imageUrl != null && produto.imageUrl!.isNotEmpty)
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                        child: Image.network(
-                          produto.imageUrl!.first,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      context.push('/imagem-produto', extra: produto);
+                    },
+                    child: Stack(
+                      children: [
+                        Hero(
+                          tag: produto.id, // mesmo tag do ProductCardHorizontal
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                            child: Image.network(
+                              produto.imageUrl!.first,
+                              height: 220,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 220,
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    size: 60,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        // Gradiente escuro na parte de baixo
+                        Container(
                           height: 220,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Container(
-                        height: 220,
-                        decoration: const BoxDecoration(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black54],
+                          decoration: const BoxDecoration(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Colors.black54],
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: 16,
-                        left: 16,
-                        child: Text(
-                          produto.nome,
-                          style: const TextStyle(
-                            fontFamily: 'Pacifico',
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            shadows: [
-                              Shadow(color: Colors.black45, offset: Offset(0, 2), blurRadius: 4),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                 // Conteúdo do modal
@@ -91,13 +107,20 @@ void showProdutoDetalhesSheet(
                       // Preço
                       Text(
                         'R\$ ${produto.preco.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 12),
 
                       // Descrição
-                      if (produto.descricao != null && produto.descricao!.isNotEmpty)
-                        Text(produto.descricao!, style: const TextStyle(fontSize: 16)),
+                      if (produto.descricao != null &&
+                          produto.descricao!.isNotEmpty)
+                        Text(
+                          produto.descricao!,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       const SizedBox(height: 12),
 
                       // Acompanhamentos
@@ -107,7 +130,10 @@ void showProdutoDetalhesSheet(
                           children: [
                             const Text(
                               'Acompanhamentos disponíveis:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Wrap(
@@ -133,15 +159,24 @@ void showProdutoDetalhesSheet(
                         onPressed: () {
                           Navigator.of(context).pop();
                           // Chama o AddToCartSheet com os acompanhamentos do produto
-                          showAddToCartSheet(context, produto, acompanhamentosDoProduto);
+                          showAddToCartSheet(
+                            context,
+                            produto,
+                            acompanhamentosDoProduto,
+                          );
                         },
                         icon: const Icon(Icons.add_shopping_cart),
                         label: const Text('Adicionar ao Carrinho'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orangeAccent,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          textStyle: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

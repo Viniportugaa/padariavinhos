@@ -11,18 +11,18 @@ class MenuInicial extends StatefulWidget {
 }
 
 class _MenuInicialState extends State<MenuInicial> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      CustomDialog.showInfo(
-        context,
-        title: "Aviso Especial",
-        message: "Hoje tem frango na Padaria!",
-        color: Colors.red,
-      );
-    });
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     CustomDialog.showInfo(
+  //       context,
+  //       title: "Aviso Especial",
+  //       message: "Hoje tem frango na Padaria!",
+  //       color: Colors.red,
+  //     );
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {

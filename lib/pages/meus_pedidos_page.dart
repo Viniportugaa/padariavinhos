@@ -51,6 +51,38 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
     );
   }
 
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'pendente':
+        return Colors.amber;
+      case 'em preparo':
+        return Colors.blue;
+      case 'finalizado':
+        return Colors.green;
+      case 'cancelado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _statusBg(String status) {
+    switch (status) {
+      case 'pendente':
+        return Colors.orange.withOpacity(0.15);
+      case 'em preparo':
+        return Colors.blue.withOpacity(0.15);
+      case 'finalizado':
+        return Colors.green.withOpacity(0.15);
+      case 'cancelado':
+        return Colors.red.withOpacity(0.12);
+      default:
+        return Colors.grey.withOpacity(0.08);
+    }
+  }
+
+  String _formatarValor(double valor) => "R\$ ${valor.toStringAsFixed(2)}";
+
   @override
   Widget build(BuildContext context) {
     final userId = Provider.of<AuthNotifier>(context).user?.uid;
@@ -64,6 +96,7 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
       ),
       body: Column(
         children: [
+          // filtro segmentado
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: SizedBox(
@@ -81,7 +114,7 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                 style: ButtonStyle(
                   backgroundColor: MaterialStateProperty.resolveWith(
                         (states) => states.contains(MaterialState.selected)
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
                         : Colors.grey.shade200,
                   ),
                 ),
@@ -89,7 +122,7 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
             ),
           ),
 
-          // 🔹 Lista de pedidos
+          // lista de pedidos
           Expanded(
             child: StreamBuilder<List<Pedido>>(
               stream: _pedidosStream(userId),
@@ -116,34 +149,27 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                   itemCount: pedidos.length,
                   itemBuilder: (context, index) {
                     final pedido = pedidos[index];
-                    final dataFormatada =
-                    DateFormat('dd/MM/yyyy HH:mm').format(pedido.data);
+                    final dataFormatada = DateFormat('dd/MM/yyyy HH:mm').format(pedido.data);
 
                     return Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       margin: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 4,
+                      elevation: 3,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () => _abrirDetalhes(pedido),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(14),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // 🔹 Ícone do status
+                              // ícone circular de status
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: pedido.status == 'finalizado'
-                                      ? Colors.green.withOpacity(0.15)
-                                      : pedido.status == 'em preparo'
-                                      ? Colors.blue.withOpacity(0.15)
-                                      : pedido.status == 'pendente'
-                                      ? Colors.orange.withOpacity(0.15)
-                                      : Colors.red.withOpacity(0.15),
+                                  color: _statusBg(pedido.status),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -154,66 +180,70 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                                       : pedido.status == 'pendente'
                                       ? Icons.access_time
                                       : Icons.cancel,
-                                  color: pedido.status == 'finalizado'
-                                      ? Colors.green
-                                      : pedido.status == 'em preparo'
-                                      ? Colors.blue
-                                      : pedido.status == 'pendente'
-                                      ? Colors.orange
-                                      : Colors.red,
+                                  color: _statusColor(pedido.status),
+                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(width: 16),
 
-                              // 🔹 Infos principais
+                              const SizedBox(width: 14),
+
+                              // infos principais
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Pedido #${pedido.numeroPedido}",
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    // header: number + date
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "Pedido #${pedido.numeroPedido}",
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          dataFormatada,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Data: $dataFormatada",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
+
                                     const SizedBox(height: 8),
 
-                                    // 🔹 Subtotal
-                                    Text(
-                                      "Subtotal: R\$ ${pedido.subtotal.toStringAsFixed(2)}",
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    // subtotal / desconto (se houver) / total
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "Subtotal: ${_formatarValor(pedido.itens.fold(0.0, (s, i) => s + (i.subtotal)))}",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        if (pedido.cupomAplicado != null)
+                                          Text(
+                                            pedido.cupomAplicado!.percentual
+                                                ? "Desconto: ${pedido.cupomAplicado!.desconto.toStringAsFixed(0)}%"
+                                                : "Desconto: R\$ ${pedido.cupomAplicado!.desconto.toStringAsFixed(2)}",
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.redAccent,
+                                            ),
+                                          ),
+                                      ],
                                     ),
 
-                                    // 🔹 Exibe desconto se houver cupom
-                                    if (pedido.cupomAplicado != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Desconto: ${pedido.cupomAplicado!.percentual ? "${pedido.cupomAplicado!.desconto.toStringAsFixed(0)}%" : "R\$ ${pedido.cupomAplicado!.desconto.toStringAsFixed(2)}"}",
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.redAccent,
-                                        ),
-                                      ),
-                                    ],
+                                    const SizedBox(height: 6),
 
-                                    const SizedBox(height: 4),
-
-                                    // 🔹 Total final
                                     Text(
-                                      "Total: R\$ ${pedido.totalFinal.toStringAsFixed(2)}",
+                                      "Total: ${_formatarValor(pedido.totalFinal)}",
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -223,29 +253,24 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                                 ),
                               ),
 
-                              // 🔹 Status como chip
+                              const SizedBox(width: 12),
+
+                              // chip de status
                               Chip(
                                 label: Text(
-                                  pedido.status,
+                                  pedido.status.toUpperCase(),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
                                 ),
-                                backgroundColor: pedido.status == 'finalizado'
-                                    ? Colors.green
-                                    : pedido.status == 'em preparo'
-                                    ? Colors.blue
-                                    : pedido.status == 'pendente'
-                                    ? Colors.orange
-                                    : Colors.red,
+                                backgroundColor: _statusColor(pedido.status),
                               ),
                             ],
                           ),
                         ),
                       ),
                     );
-
                   },
                 );
               },

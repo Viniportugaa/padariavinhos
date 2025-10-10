@@ -25,7 +25,7 @@ class PedidoItemCard extends StatelessWidget {
               child: (item.produto.imageUrl != null &&
                   item.produto.imageUrl.isNotEmpty)
                   ? Image.network(
-                item.produto.imageUrl.first, // ✅ pega a primeira imagem
+                item.produto.imageUrl.first,
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
@@ -56,7 +56,6 @@ class PedidoItemCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // Quantidade + Unidade
                   Text(
                     "Qtd: ${item.quantidade} ${item.produto.vendidoPorPeso ? 'kg' : 'un'}",
                     style: TextStyle(
@@ -65,7 +64,6 @@ class PedidoItemCard extends StatelessWidget {
                     ),
                   ),
 
-                  // Acompanhamentos
                   if (item.acompanhamentos != null &&
                       item.acompanhamentos!.isNotEmpty)
                     Padding(

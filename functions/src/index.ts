@@ -1,20 +1,16 @@
-// index.ts
 import * as admin from "firebase-admin";
 admin.initializeApp();
 
-// Imports das triggers
 import { sendNewPedidoNotification } from "./sendNewPedidoNotification";
 import { buildNotification } from "./buildNotification";
-import { notifyAdminNewPedido } from "./notifyAdminNewPedido"
-// Exports das triggers
-export {
-  sendNewPedidoNotification
-};
+import { notifyAdminNewPedido } from "./notifyAdminNewPedido";
+import { notifyUserPedidoStatusChange } from "./notifyUserPedidoStatusChange";
+import { notifyAdminPedidosPendentesHoje } from "./notifyAdminPedidosPendentesHoje";
 
 export {
-    buildNotification
-};
-
-export {
+  sendNewPedidoNotification,
+  buildNotification,
   notifyAdminNewPedido,
+  notifyUserPedidoStatusChange,
+  notifyAdminPedidosPendentesHoje,
 };

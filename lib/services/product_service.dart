@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uuid/uuid.dart';
 import '../models/produto.dart';
 
@@ -9,26 +13,51 @@ class ProductService {
   final FirebaseStorage  _storage   = FirebaseStorage.instance;
 
 
-  /// Faz upload da imagem e retorna a URL
-  Future<String> uploadImage(File imageFile) async {
-    try{
+  Future<String> uploadImage(dynamic imageSource) async {
+    try {
       final String fileName = const Uuid().v4();
-      final snapshot = await _storage
-        .ref('produtos/$fileName.jpg')
-        .putFile(imageFile);
+      final Reference ref = _storage.ref().child('produtos/$fileName.jpg');
 
+      UploadTask uploadTask;
+
+      if (kIsWeb) {
+        if (imageSource is Uint8List) {
+          uploadTask = ref.putData(
+            imageSource,
+            SettableMetadata(contentType: 'image/jpeg'),
+          );
+        } else {
+          throw Exception("Formato de imagem inválido para Web");
+        }
+      } else {
+        if (imageSource is File) {
+          uploadTask = ref.putFile(imageSource);
+        } else {
+          throw Exception("Formato de imagem inválido para Mobile");
+        }
+      }
+
+      final TaskSnapshot snapshot = await uploadTask.whenComplete(() {});
       return await snapshot.ref.getDownloadURL();
-    } catch (e){
+    } catch (e) {
+      developer.log("Erro ao enviar imagem: $e");
       throw Exception("Erro ao fazer upload da imagem: $e");
     }
   }
 
-  Future<List<String>> uploadMultipleImages(List<File> imageFiles) async {
+
+  Future<List<String>> uploadMultipleImages(List<dynamic> imageFiles) async {
     List<String> urls = [];
-    for (File file in imageFiles) {
-      final url = await uploadImage(file);
-      urls.add(url);
+
+    for (var file in imageFiles) {
+      try {
+        final url = await uploadImage(file);
+        urls.add(url);
+      } catch (e) {
+        developer.log('Erro ao enviar imagem: $e');
+      }
     }
+
     return urls;
   }
 

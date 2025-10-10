@@ -21,7 +21,6 @@ class PedidoDetalhesModal extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Barra de arraste
             Center(
               child: Container(
                 width: 60,

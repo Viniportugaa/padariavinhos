@@ -104,7 +104,7 @@ class User {
       numeroEndereco: map['numeroEndereco'] ?? '',
       telefone: map['telefone'] ?? '',
       email: map['email'] ?? '',
-      role: map['role'] ?? 'cliente',
+      role: map['role'] ,
       createdAt: map['createdAt'] is Timestamp
           ? map['createdAt']
           : Timestamp.now(),
