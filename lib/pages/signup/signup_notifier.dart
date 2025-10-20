@@ -43,14 +43,17 @@ class SignUpNotifier extends ChangeNotifier {
       );
 
       await _authNotifier.setUser(newUser);
-
-      _isLoading = false;
-      notifyListeners();
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      // Log detalhado do erro
+      if (kDebugMode) {
+        print("Erro ao criar usuário: $e");
+        print(st);
+      }
+      return false;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 }

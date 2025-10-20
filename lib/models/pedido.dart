@@ -25,6 +25,7 @@ class Pedido {
   final double? valorPago;
   final double? troco;
 
+  final String? motivoCancelamento;
 
   Pedido({
     required this.id,
@@ -45,6 +46,7 @@ class Pedido {
     this.cupomAplicado,
     this.valorPago,
     this.troco,
+    this.motivoCancelamento,
 
   }) : totalFinal = totalFinal ?? _calcularTotalFinal(itens, frete, cupomAplicado);
 
@@ -141,6 +143,7 @@ class Pedido {
       cupomAplicado: cupom,
       valorPago: (map['valorPago'] as num?)?.toDouble(),
       troco: (map['troco'] as num?)?.toDouble(),
+      motivoCancelamento: map['motivoCancelamento'],
     );
   }
 
@@ -165,7 +168,7 @@ class Pedido {
       'cupomAplicado': cupomAplicado?.toMap(),
       'valorPago': valorPago,
       'troco': troco,
-
+      'motivoCancelamento': motivoCancelamento,
     };
   }
 }

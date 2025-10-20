@@ -13,6 +13,9 @@ class ItemCarrinho {
 
   late final String idUnico;
 
+  final String? mesa;
+  final int? posicao;
+
   ItemCarrinho({
     required this.produto,
     this.quantidade = 1,
@@ -20,6 +23,8 @@ class ItemCarrinho {
     this.acompanhamentos = const [],
     required this.preco,
     this.precoUnitarioCustom,
+    this.mesa,
+    this.posicao,
   }) {
     idUnico = gerarIdUnico();
   }
@@ -58,6 +63,10 @@ class ItemCarrinho {
       precoUnitarioCustom: (map['precoUnitarioCustom'] != null)
           ? (map['precoUnitarioCustom'] as num).toDouble()
           : null,
+      mesa: map['mesa'] as String?,          // novo campo
+      posicao: map['posicao'] != null
+          ? (map['posicao'] as num).toInt()
+          : null,
     );
   }
 
@@ -75,7 +84,10 @@ class ItemCarrinho {
       'acompanhamentos': acompanhamentos != null
           ? acompanhamentos!.map((a) => a.toMap()).toList()
           : [],
+      'mesa': mesa,
+      'posicao': posicao,
     };
+
   }
 
   String gerarIdUnico() {

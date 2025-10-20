@@ -15,8 +15,18 @@ class PedidoService {
   FirebaseFirestore.instance.collection('contadores').doc('pedidoCounter');
   final CollectionReference _cuponsRef =
   FirebaseFirestore.instance.collection('cupons');
+  final _firestore = FirebaseFirestore.instance;
 
   final BlueThermalPrinter printer = BlueThermalPrinter.instance;
+
+  Future<void> cancelarPedido(String pedidoId, String motivo) async {
+    await _firestore.collection('pedidos').doc(pedidoId).update({
+      'status': 'cancelado',
+      'motivoCancelamento': motivo,
+      'dataCancelamento': DateTime.now(),
+    });
+  }
+
 
   Future<int> getNextNumeroPedido() async {
     return FirebaseFirestore.instance.runTransaction<int>((transaction) async {

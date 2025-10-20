@@ -81,7 +81,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     if (success) {
       DialogHelper.showTemporaryToast(context, 'Cadastro realizado com sucesso!');
-      if (mounted) context.go('/menu');
+      if (mounted) context.go('/splash');
     } else {
       DialogHelper.showTemporaryToast(context, 'Falha ao realizar cadastro. Tente novamente.');
     }

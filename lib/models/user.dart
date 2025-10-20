@@ -83,14 +83,14 @@ class User {
       'uid': uid,
       'nome': nome,
       'endereco': endereco,
-      'numero_endereco': numeroEndereco,
+      'numeroEndereco': numeroEndereco,
       'telefone': telefoneWhatsApp,
       'email': email,
       'role': role,
-      'created_at': createdAt,
+      'createdAt': createdAt,
       'cep': cep,
       'tipo_residencia': tipoResidencia,
-      'ramal_apartamento': ramalApartamento,
+      'ramalApartamento': ramalApartamento,
       'location': location,
 
     };
@@ -104,12 +104,14 @@ class User {
       numeroEndereco: map['numeroEndereco'] ?? '',
       telefone: map['telefone'] ?? '',
       email: map['email'] ?? '',
-      role: map['role'] ,
-      createdAt: map['createdAt'] is Timestamp
+      role: map['role'] ?? 'cliente',
+      createdAt: map['created_at'] is Timestamp
+          ? map['created_at']
+          : (map['createdAt'] is Timestamp
           ? map['createdAt']
-          : Timestamp.now(),
+          : Timestamp.now()),
       cep: map['cep'] ?? '',
-      tipoResidencia: map['tipoResidencia'] ?? 'casa',
+      tipoResidencia: map['tipo_residencia'] ?? 'casa',
       ramalApartamento: map['ramalApartamento'],
       location: map['location'] is GeoPoint
           ? map['location']

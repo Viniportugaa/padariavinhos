@@ -57,7 +57,6 @@ class _RelatorioPageState extends State<RelatorioPage> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('pedidos')
-                  .orderBy('data', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

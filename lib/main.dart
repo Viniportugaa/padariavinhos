@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 // Notifiers / Providers (mantive suas imports)
 import 'notifiers/products_notifier.dart';
@@ -20,6 +21,7 @@ import 'notifiers/config_notifier.dart';
 import 'router.dart';
 import 'package:padariavinhos/provider/pedido_provider.dart';
 import 'package:padariavinhos/provider/favoritos_provider.dart';
+import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
 
 /// Background handler (quando app está em segundo plano / terminated)
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -82,12 +84,20 @@ Future<void> main() async {
     }
   });
 
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProductsNotifier()),
         ChangeNotifierProvider(create: (_) => CarrinhoProvider()),
         ChangeNotifierProvider(create: (_) => AuthNotifier()),
+        ChangeNotifierProvider(create: (_) => PedidoLocalProvider()),
         ChangeNotifierProvider(create: (context) {
           final authNotifier = context.read<AuthNotifier>();
           return SignUpNotifier(authNotifier);

@@ -48,20 +48,29 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _startSequence() async {
     final auth = context.read<AuthNotifier>();
 
-    // 🔹 1. Executa a animação do logo
-    await _controller.forward();
-
-    // 🔹 2. Espera o AuthNotifier terminar de carregar o usuário
+    // Aguarda o carregamento inicial (Firebase/AuthService)
     while (auth.isLoading) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    // 🔹 3. Marca o splash como finalizado (GoRouter agora pode redirecionar)
-    if (mounted) {
+    // Se não há usuário logado, pode seguir adiante
+    if (!auth.isAuthenticated) {
       auth.splashFinished = true;
       auth.notifyListeners();
+      return;
     }
+
+    // Se há usuário logado, aguarda até o role ser definido
+    while (auth.role == null) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    // Marca o splash como concluído
+    auth.splashFinished = true;
+    auth.notifyListeners();
   }
+
+
 
   @override
   void dispose() {

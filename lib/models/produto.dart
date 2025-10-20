@@ -13,6 +13,7 @@ class Produto {
   final List<Acompanhamento> acompanhamentosSelecionados;
   final List<String> acompanhamentosIds;
   final bool vendidoPorPeso;
+  final bool disponivelLocal;
 
   Produto({
     required this.id,
@@ -22,6 +23,7 @@ class Produto {
     required this.preco,
     required this.disponivel,
     required this.category,
+    this.disponivelLocal = true,
     this.acompanhamentosDisponiveis = const [],
     this.acompanhamentosSelecionados = const [],
     this.acompanhamentosIds = const [],
@@ -44,6 +46,7 @@ class Produto {
       imageUrl: imagens,
       preco:       (map['preco'] ?? 0).toDouble(),
       disponivel:  map['disponivel'] ?? true,
+      disponivelLocal: map['disponivelLocal'] ?? true,
       category: map['category'] ?? '',
       acompanhamentosDisponiveis: acompanhamentosDisponiveis ?? [],
       acompanhamentosSelecionados: acompanhamentosSelecionados ?? [],
@@ -59,6 +62,7 @@ class Produto {
       'imageUrl': imageUrl,
       'preco': preco,
       'disponivel': disponivel,
+      'disponivelLocal': disponivelLocal,
       'category': category,
       'acompanhamentosDisponiveis': acompanhamentosDisponiveis.map((a) => a.toMap()).toList(),
       'acompanhamentosSelecionados': acompanhamentosSelecionados.map((a) => a.toMap()).toList(),

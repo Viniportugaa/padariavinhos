@@ -108,6 +108,29 @@ class NotificationService {
     });
   }
 
+  /// 🔹 Remove o token atual do usuário logado
+  static Future<void> removeCurrentUserToken() async {
+    try {
+      final user = fb_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final token = await _fcm.getToken();
+      if (token == null) return;
+
+      final userRef =
+      FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+      await userRef.update({
+        'fcmTokens': FieldValue.arrayRemove([token])
+      });
+
+      print("🧹 Token FCM removido com sucesso: $token");
+    } catch (e) {
+      print("❌ Erro ao remover token FCM: $e");
+    }
+  }
+
+
   /// 🔹 Mostra notificação local
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;

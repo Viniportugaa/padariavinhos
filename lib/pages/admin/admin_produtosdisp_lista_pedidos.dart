@@ -25,6 +25,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
     final precoController = TextEditingController(text: produto.preco.toString());
     String categoria = produto.category;
     bool disponivel = produto.disponivel;
+    bool disponivelLocal = produto.disponivelLocal;
     bool vendidoPorPeso = produto.vendidoPorPeso;
 
     showModalBottomSheet(
@@ -111,7 +112,15 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                     disponivel = val;
                   },
                 ),
-
+                // Disponível toggle
+                SwitchListTile(
+                  value: disponivelLocal,
+                  title: const Text("Disponível Local"),
+                  activeColor: Colors.deepOrange,
+                  onChanged: (val) {
+                    disponivelLocal = val;
+                  },
+                ),
                 // Vendido por peso toggle
                 SwitchListTile(
                   value: vendidoPorPeso,
@@ -139,6 +148,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
                       'preco': double.tryParse(precoController.text.replaceAll(',', '.')) ?? produto.preco,
                       'category': categoria,
                       'disponivel': disponivel,
+                      'disponivelLocal':disponivelLocal,
                       'vendidoPorPeso': vendidoPorPeso,
                       'imageUrl': produto.imageUrl,
                     });

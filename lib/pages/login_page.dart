@@ -41,6 +41,7 @@ class _LoginPageState extends State<LoginPage> {
       final authNotifier = context.read<AuthNotifier>();
       final authService = AuthService();
 
+      // Login com Firebase
       final user = await authService.loginWithEmail(
         emailController.text.trim(),
         passwordController.text.trim(),
@@ -48,18 +49,39 @@ class _LoginPageState extends State<LoginPage> {
 
       if (user == null) throw Exception("Erro ao carregar dados do usuário");
 
+      // Garantir que o role seja carregado do Firestore
       await authNotifier.setUser(user);
+
+      // Atualizar token FCM após login
+      await updateFcmToken(user.uid);
 
       if (!mounted) return;
 
-      context.go(user.role == 'admin' ? '/admin' : '/menu');
+      // Checar role antes do redirecionamento
+      final role = authNotifier.role;
+
+      if (role == null || role.isEmpty) {
+        DialogHelper.showTemporaryToast(context, 'Role do usuário não definido.');
+        return;
+      }
+
+      switch (role) {
+        case 'admin':
+          context.go('/admin');
+          break;
+        case 'cliente_local':
+          context.go('/local-splash');
+          break;
+        default:
+          context.go('/menu');
+      }
 
     } on FirebaseAuthException catch (e) {
       DialogHelper.showTemporaryToast(context, e.message ?? 'Erro no login');
     } catch (e) {
       DialogHelper.showTemporaryToast(context, 'Erro: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -189,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: RichText(
                       text: TextSpan(
-                        text: 'Não tem conta? ',
+                        text: 'Não tem conta??? ',
                         style: const TextStyle(color: Colors.white),
                         children: [
                           TextSpan(

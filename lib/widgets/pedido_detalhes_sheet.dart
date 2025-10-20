@@ -184,7 +184,46 @@ class PedidoDetalhesSheet extends StatelessWidget {
                           children: [
                             const Icon(Icons.cancel, size: 48, color: Colors.red),
                             const SizedBox(height: 8),
-                            Text("Pedido Cancelado", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                            Text(
+                              "Pedido Cancelado",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            // 🔹 exibe motivo do cancelamento, se houver
+                            if (pedido.motivoCancelamento != null &&
+                                pedido.motivoCancelamento!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(top: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.error_outline,
+                                        color: Colors.red, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Motivo: ${pedido.motivoCancelamento}",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.red.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),

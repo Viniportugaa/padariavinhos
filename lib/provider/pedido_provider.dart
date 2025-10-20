@@ -68,4 +68,31 @@ class PedidoProvider extends ChangeNotifier {
     await _pedidoService.imprimirPedido(pedido, usuario, context);
     notifyListeners();
   }
+
+  Future<void> cancelarComMotivo(Pedido pedido, String motivo) async {
+    try {
+      // 🔹 Atualiza o status localmente
+      pedido.status = 'cancelado'; // mantém coerência com o tipo String do modelo
+      notifyListeners();
+
+      // 🔹 Chama o serviço que faz o update no Firestore
+      await _pedidoService.cancelarPedido(pedido.id, motivo);
+
+      // 🔹 (Opcional) Atualiza outros campos adicionais no documento
+      await _firestore.collection('pedidos').doc(pedido.id).update({
+        'totalFinal': pedido.totalFinal,
+        'notificacao': 'Seu pedido foi cancelado. Motivo: $motivo',
+      });
+
+      // 🔹 Mantém a coerência de valor (caso tenha sido ajustado)
+      await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
+
+      debugPrint('✅ Pedido ${pedido.id} cancelado com motivo: $motivo');
+    } catch (e) {
+      debugPrint('❌ Erro ao cancelar pedido com motivo: $e');
+      rethrow;
+    }
+  }
+
+
 }

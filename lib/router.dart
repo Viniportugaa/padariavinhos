@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
+import 'package:padariavinhos/pages/local/local_splash_screen.dart';
 import 'package:padariavinhos/pages/local/painel_balcao_page.dart';
-import 'package:padariavinhos/pages/local/pedido_local_page.dart';
+import 'package:padariavinhos/pages/local/fazer_pedido_local_page.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
 import 'package:padariavinhos/pages/admin/cadastro_acompanhamento_page.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/conclusao_pedido_page.dart';
 import 'package:padariavinhos/pages/fazer_pedido/fazer_pedido_page.dart';
 import 'package:padariavinhos/pages/login_page.dart';
-import 'package:padariavinhos/pages/menuinicial_page.dart';
+import 'package:padariavinhos/pages/menu/menuinicial_page.dart';
 import 'package:padariavinhos/pages/offline.dart';
 import 'package:padariavinhos/pages/opcoes_page.dart';
 import 'package:padariavinhos/pages/quem_somos_page.dart';
@@ -31,8 +32,7 @@ import 'package:padariavinhos/pages/admin/relatorio_page.dart';
 import 'package:padariavinhos/pages/admin/relatorio_cliente.dart';
 import 'package:padariavinhos/custom_shell.dart';
 import 'package:padariavinhos/pages/admin/cupons_admin_page.dart';
-import 'package:padariavinhos/widgets/imagem_produto.dart';
-
+import 'package:padariavinhos/pages/local/local_splash_screen.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -44,23 +44,45 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       final isOnline = authNotifier.isOnline;
       final role = authNotifier.role;
       final location = state.matchedLocation;
+      final splashDone = authNotifier.splashFinished;
 
-      debugPrint('[Redirect] location: $location | role: $role | loggedIn: $isLoggedIn | splash: ${authNotifier.splashFinished}');
+      debugPrint(
+          '[Redirect] loc=$location | role=$role | loggedIn=$isLoggedIn | splash=$splashDone');
 
-      if (location == '/splash') {
-        if (!authNotifier.splashFinished) return null;
+      // 1️⃣ Espera o splash terminar
+      if (!splashDone) return null;
 
-        if (isLoggedIn) {
-          if (role == 'admin') return '/admin';
-          return '/menu';
+      // 2️⃣ Se não está logado → login
+      if (!isLoggedIn) {
+        if (!['/login', '/signup', '/lgpd', '/offline'].contains(location)) {
+          return '/login';
         }
-        return '/login';
+        return null;
       }
 
-      if (!isLoggedIn && !['/login', '/signup', '/lgpd'].contains(location)) {
-        return '/login';
+      // 3️⃣ Espera role carregar
+      if (role == null || role.isEmpty) {
+        return null;
       }
 
+      // 4️⃣ Pós-login ou splash: redireciona conforme role
+      if (location == '/splash' || location == '/login' || location == '/signup') {
+        if (role == 'admin') return '/admin';
+        if (role == 'cliente_local') return '/local-splash';
+        return '/menu';
+      }
+
+      // 5️⃣ Se admin está em /menu, manda pro /admin
+      if (role == 'admin' && location.startsWith('/menu')) {
+        return '/admin';
+      }
+
+      // 6️⃣ Se cliente tenta acessar admin, bloqueia
+      if (role != 'admin' && location.startsWith('/admin')) {
+        return '/menu';
+      }
+
+      // 7️⃣ Se estiver offline e rota requer internet
       if (['/menu', '/pedido', '/orcamento'].contains(location) && !isOnline) {
         return '/offline';
       }
@@ -121,6 +143,12 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       ),
 
       GoRoute(
+        path: '/local-splash',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: LocalSplashScreen(), state: state),
+      ),
+
+  GoRoute(
         path: '/relatorio-clientes',
         pageBuilder: (context, state) =>
             scaleTransitionPage(child: RelatorioClientesPage(), state: state),
@@ -129,7 +157,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       GoRoute(
         path: '/local2',
         pageBuilder: (context, state) =>
-            scaleTransitionPage(child: PedidoLocalPage(), state: state),
+            scaleTransitionPage(child: FazerPedidoLocalPage(), state: state),
       ),
 
       GoRoute(
@@ -253,69 +281,6 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       ),
     ],
   );
-}
-
-Widget _buildNavItem(BuildContext context, IconData icon, String path, bool selected, {String? label, bool badge = false}) {
-  return InkWell(
-    onTap: () => context.go(path),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: label == null
-          ? MainAxisAlignment.center
-          : MainAxisAlignment.start,
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(icon, color: selected ? Colors.red : Colors.grey),
-            if (badge)
-              Positioned(
-                top: -4,
-                right: -4,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white),
-                  ),
-                  child: const Icon(
-                    Icons.priority_high,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
-              )
-          ],
-        ),
-        if (label != null)
-          Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.red : Colors.grey,
-              fontSize: 12,
-            ),
-          ),
-      ],
-    ),
-  );
-}
-
-int _getIndexFromLocation(String path) {
-  switch (path) {
-    case '/menu':
-      return 0;
-    case '/meuspedidos':
-      return 1;
-    case '/pedido':
-      return 2;
-    case '/opcoes':
-      return 3;
-    case '/conclusao-pedido':
-      return 4;
-    default:
-      return 0;
-  }
 }
 
 class _RedirectToMenu extends StatefulWidget {

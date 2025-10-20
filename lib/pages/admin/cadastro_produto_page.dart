@@ -25,6 +25,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   bool  _disponivel = true;
   bool _vendidoPorPeso = false;
   bool  _isSaving   = false;
+  bool _disponivelLocal = true;
   final _service = ProductService();
 
   final List<String> _categorias = [
@@ -90,6 +91,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
         imageUrl: todasImagens,
         preco: double.parse(_precoController.text.replaceAll(',', '.')),
         disponivel: _disponivel,
+        disponivelLocal: _disponivelLocal,
         vendidoPorPeso: _vendidoPorPeso,
         category: _categoriaSelecionada!,
       );
@@ -150,6 +152,11 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
                     title: const Text('Disponível'),
                     value: _disponivel,
                     onChanged: (val) => setState(() => _disponivel = val),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Disponível Localmente'),
+                    value: _disponivelLocal,
+                    onChanged: (val) => setState(() => _disponivelLocal = val),
                   ),
                   SwitchListTile(
                     title: const Text('Vendido por Peso'),

@@ -67,17 +67,16 @@ class _OpcoesPageState extends State<OpcoesPage> {
     if (data != null) {
       nameController.text = data['nome'] ?? '';
       addressController.text = data['endereco'] ?? '';
-      addressNumberController.text = data['numero_endereco'] ?? '';
+      addressNumberController.text = data['numeroEndereco'] ?? '';
       phoneController.text = data['telefone'] ?? '';
       cepController.text = _formatCep((data['cep'] ?? '').toString());
       _tipoResidencia = (data['tipo_residencia'] ?? 'casa').toString();
-      ramalApartamentoController.text = (data['ramal_apartamento'] ?? '').toString();
+      ramalApartamentoController.text = (data['ramalApartamento'] ?? '').toString();
 
       if (mounted) setState(() {});
     }
   }
 
-  // ✅ Função auxiliar modular para excluir conta
   Future<void> deleteAccountWithPassword(String password) async {
     showDialog(
       context: context,
