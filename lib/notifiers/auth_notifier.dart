@@ -133,7 +133,7 @@ class AuthNotifier extends ChangeNotifier {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(_user!.uid)
-          .update(novosDados);
+          .set(novosDados, SetOptions(merge: true));
 
       _user = _user!.copyWith(
         nome: novosDados['nome'] ?? _user!.nome,

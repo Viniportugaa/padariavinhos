@@ -41,11 +41,11 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
-
     _startSequence();
   }
 
   Future<void> _startSequence() async {
+    await _controller.forward();
     final auth = context.read<AuthNotifier>();
 
     // Aguarda o carregamento inicial (Firebase/AuthService)

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class PedidoValidador {
   static const double valorMinimo = 20.0;
-  static const double alcanceKm = 1.5;
+  static const double alcanceKm = 3.0;
 
   /// Coordenadas da loja (CEP 01435-000)
   static const double lojaLat = -23.57904;

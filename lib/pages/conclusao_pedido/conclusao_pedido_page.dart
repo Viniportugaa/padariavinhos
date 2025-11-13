@@ -37,7 +37,6 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
     final carrinho = Provider.of<CarrinhoProvider>(context);
     final authNotifier = Provider.of<AuthNotifier>(context);
     final user = authNotifier.user;
-    final origem = "app";
     if (user == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -73,7 +72,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
         : true;
 
     final pedidoOk = controller.tipoEntrega == TipoEntrega.entrega
-        ? (PedidoValidador.validarValor(valorTotal) && dentroAlcance)
+        ? (PedidoValidador.validarValor(valorTotal))
         : true;
 
     return AbertoConclusaoChecker(
@@ -127,7 +126,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Seu endereço pode estar fora da área de entrega '
+                            'Seu endereço pode estar fora da área de entrega, sujeito a cancelamento '
                                 '(${PedidoValidador.alcanceKm.toStringAsFixed(1)} km).',
                             style: const TextStyle(
                               color: Colors.red,

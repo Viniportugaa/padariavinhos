@@ -30,6 +30,38 @@ class Produto {
     this.vendidoPorPeso = false,
   });
 
+  Produto copyWith({
+    String? id,
+    String? nome,
+    String? descricao,
+    List<String>? imageUrl,
+    double? preco,
+    bool? disponivel,
+    String? category,
+    bool? disponivelLocal,
+    List<Acompanhamento>? acompanhamentosDisponiveis,
+    List<Acompanhamento>? acompanhamentosSelecionados,
+    List<String>? acompanhamentosIds,
+    bool? vendidoPorPeso,
+  }) {
+    return Produto(
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      descricao: descricao ?? this.descricao,
+      imageUrl: imageUrl ?? List.from(this.imageUrl),
+      preco: preco ?? this.preco,
+      disponivel: disponivel ?? this.disponivel,
+      category: category ?? this.category,
+      disponivelLocal: disponivelLocal ?? this.disponivelLocal,
+      acompanhamentosDisponiveis:
+      acompanhamentosDisponiveis ?? List.from(this.acompanhamentosDisponiveis),
+      acompanhamentosSelecionados:
+      acompanhamentosSelecionados ?? List.from(this.acompanhamentosSelecionados),
+      acompanhamentosIds: acompanhamentosIds ?? List.from(this.acompanhamentosIds),
+      vendidoPorPeso: vendidoPorPeso ?? this.vendidoPorPeso,
+    );
+  }
+
   factory Produto.fromMap(Map<String, dynamic> map, String id, {List<Acompanhamento>? acompanhamentosDisponiveis, List<Acompanhamento>? acompanhamentosSelecionados}) {
     final dynamic imgField = map['imageUrl'];
 

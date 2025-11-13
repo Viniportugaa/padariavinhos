@@ -3,9 +3,6 @@ import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/models/user.dart';
 import 'package:padariavinhos/services/pedido_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:intl/intl.dart';
 
 class PedidoStatus {
   static const pendente = 'pendente';

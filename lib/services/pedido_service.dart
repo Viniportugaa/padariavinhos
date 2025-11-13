@@ -43,17 +43,17 @@ class PedidoService {
         .where('userId', isEqualTo: userId)
         .orderBy('data', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) =>
-        Pedido.fromMap(doc.data() as Map<String, dynamic>, doc.id))
-        .toList());
+        .map((snapshot) =>
+        snapshot.docs
+            .map((doc) =>
+            Pedido.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+            .toList());
   }
 
-  Future<void> criarPedido(
-      Pedido pedido, {
-        DateTime? dataEntrega,
-        TimeOfDay? horaEntrega,
-      }) async {
+  Future<void> criarPedido(Pedido pedido, {
+    DateTime? dataEntrega,
+    TimeOfDay? horaEntrega,
+  }) async {
     try {
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final contadorSnapshot = await transaction.get(_contadorRef);
@@ -126,11 +126,9 @@ class PedidoService {
   }
 
   // 🔹 Impressão movida do Provider para cá
-  Future<void> imprimirPedido(
-      Pedido pedido,
+  Future<void> imprimirPedido(Pedido pedido,
       User usuario,
-      BuildContext context,
-      ) async {
+      BuildContext context,) async {
     try {
       final statuses = await [
         Permission.bluetooth,
@@ -142,7 +140,8 @@ class PedidoService {
 
       if (statuses.values.any((s) => !s.isGranted)) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permissões Bluetooth necessárias não concedidas.')),
+          const SnackBar(content: Text(
+              'Permissões Bluetooth necessárias não concedidas.')),
         );
         return;
       }
@@ -150,7 +149,8 @@ class PedidoService {
       final devices = await printer.getBondedDevices();
       if (devices.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nenhuma impressora pareada encontrada.')),
+          const SnackBar(
+              content: Text('Nenhuma impressora pareada encontrada.')),
         );
         return;
       }
@@ -164,8 +164,8 @@ class PedidoService {
         if (!isConnected) throw Exception("Falha ao conectar à impressora.");
       }
 
-      String enderecoCompleto =
-          "${usuario.endereco}, Nº ${usuario.numeroEndereco}";
+      String enderecoCompleto = "${usuario.endereco}, Nº ${usuario
+          .numeroEndereco}";
       if (usuario.tipoResidencia == "apartamento" &&
           usuario.ramalApartamento != null &&
           usuario.ramalApartamento!.isNotEmpty) {
@@ -173,19 +173,23 @@ class PedidoService {
       }
       enderecoCompleto += " - CEP: ${usuario.cep}";
 
+      // Cálculo do desconto
+      final double desconto = pedido.subtotal - pedido.totalFinal;
+
       // Impressão
       printer.printNewLine();
       printer.printCustom("Padaria Vinho's", 3, 1);
-      printer.printCustom("Pedido num. ${pedido.numeroPedido}", 2, 0);
+      printer.printCustom("Pedido n. ${pedido.numeroPedido}", 2, 0);
       printer.printNewLine();
       printer.printCustom("DATA ${pedido.dataHoraEntrega}", 2, 0);
       printer.printNewLine();
       printer.printLeftRight("Cliente:", pedido.nomeUsuario, 1);
       printer.printLeftRight("Telefone:", pedido.telefone, 1);
-      printer.printCustom("Endereço:", 1, 0);
+      printer.printCustom("Endereco:", 1, 0);
       printer.printCustom(enderecoCompleto, 0, 0);
       printer.printLeftRight(
-          "Data:", DateFormat('dd/MM/yyyy HH:mm').format(pedido.data.toLocal()), 1);
+          "Data:", DateFormat('dd/MM/yyyy HH:mm').format(pedido.data.toLocal()),
+          1);
       printer.printNewLine();
 
       printer.printCustom("Itens:", 1, 0);
@@ -196,10 +200,12 @@ class PedidoService {
         final subtotalItem = item.subtotal;
 
         printer.printLeftRight(
-            "$prefixo ${item.produto.nome}", "R\$ ${subtotalItem.toStringAsFixed(2)}", 0);
+            "$prefixo ${item.produto.nome}",
+            "R\$ ${subtotalItem.toStringAsFixed(2)}", 0);
 
         if (item.acompanhamentos != null && item.acompanhamentos!.isNotEmpty) {
-          final nomesAcomp = item.acompanhamentos!.map((a) => a.nome).join(', ');
+          final nomesAcomp = item.acompanhamentos!.map((a) => a.nome).join(
+              ', ');
           printer.printCustom("  Acomp: $nomesAcomp", 0, 0);
         }
 
@@ -209,15 +215,19 @@ class PedidoService {
       }
 
       printer.printNewLine();
-      printer.printLeftRight("Subtotal:",
-          "R\$ ${pedido.subtotal.toStringAsFixed(2)}", 1);
-      printer.printLeftRight("Frete:",
-          "R\$ ${pedido.frete.toStringAsFixed(2)}", 1);
-      printer.printCustom("Total: R\$ ${pedido.totalFinal.toStringAsFixed(2)}",
-          2, 2);
+      printer.printLeftRight(
+          "Subtotal:", "R\$ ${pedido.subtotal.toStringAsFixed(2)}", 1);
+      printer.printLeftRight(
+          "Frete:", "R\$ ${pedido.frete.toStringAsFixed(2)}", 1);
+
+      if (desconto > 0) {
+        printer.printLeftRight(
+            "Desconto:", "- R\$ ${desconto.toStringAsFixed(2)}", 1);
+      }
+
+      printer.printCustom(
+          "Total: R\$ ${pedido.totalFinal.toStringAsFixed(2)}", 2, 2);
       printer.printCustom("Status: ${pedido.status}", 1, 1);
-      printer.printNewLine();
-      printer.printQRcode("https://meuapp.com/pedido/${pedido.id}", 200, 200, 1);
       printer.printNewLine();
       printer.paperCut();
 

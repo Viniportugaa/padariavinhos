@@ -6,7 +6,6 @@ import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/models/user.dart';
 import 'package:padariavinhos/provider/pedido_provider.dart';
 import 'package:padariavinhos/widgets/motivo_cancelamento_dialog.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 
 class PedidoCard extends StatefulWidget {
   final Pedido pedido;
@@ -23,7 +22,6 @@ class _PedidoCardState extends State<PedidoCard>
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
-  final BlueThermalPrinter printer = BlueThermalPrinter.instance;
 
   @override
   void initState() {

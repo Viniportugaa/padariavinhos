@@ -68,7 +68,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
       });
     } else {
       setState(() {
-        _novasImagens.addAll(pickedFiles.map((f) => File(f.path)));
+        _novasImagens.addAll(pickedFiles);
       });
     }
   }
@@ -80,7 +80,8 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
     setState(() => _isSaving = true);
 
     try {
-      final List<String> uploadedImages = await _service.uploadMultipleImages(_novasImagens);
+      final List<String> uploadedImages =
+      await _service.uploadMultipleImages(_novasImagens);
 
       final List<String> todasImagens = [..._imagensExistentes, ...uploadedImages];
 
@@ -249,7 +250,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
   }
 
   Widget _buildImagePicker() {
-    final imagens = [..._imagensExistentes, ..._novasImagens.map((f) => f.path)];
+    final totalImagens = _imagensExistentes.length + _novasImagens.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,7 +270,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: imagens.length,
+          itemCount: totalImagens,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 8,
@@ -277,19 +278,39 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
           ),
           itemBuilder: (_, index) {
             final isUrl = index < _imagensExistentes.length;
-            final imagePath = imagens[index];
+
+            // Define o widget da imagem (compatível com Web + Mobile)
+            Widget imageWidget;
+            if (isUrl) {
+              imageWidget = Image.network(
+                _imagensExistentes[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+              );
+            } else {
+              final image = _novasImagens[index - _imagensExistentes.length];
+              if (image is Uint8List) {
+                imageWidget = Image.memory(
+                  image,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                );
+              } else if (image is XFile) {
+                imageWidget = Image.file(
+                  File(image.path),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                );
+              } else {
+                imageWidget = const Icon(Icons.broken_image);
+              }
+            }
+
             return Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: isUrl
-                      ? Image.network(imagePath, fit: BoxFit.cover, width: double.infinity)
-                      : (kIsWeb
-                      ? Image.memory(_novasImagens[index - _imagensExistentes.length],
-                      fit: BoxFit.cover, width: double.infinity)
-                      : Image.file(_novasImagens[index - _imagensExistentes.length],
-                      fit: BoxFit.cover, width: double.infinity)),
-
+                  child: imageWidget,
                 ),
                 Positioned(
                   top: 4,

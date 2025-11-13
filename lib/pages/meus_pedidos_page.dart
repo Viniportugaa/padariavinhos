@@ -20,26 +20,35 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
     final hoje = DateTime.now();
     final inicioSemana = hoje.subtract(Duration(days: hoje.weekday - 1));
 
+    // Pega todos os pedidos do usuário
     Query query = FirebaseFirestore.instance
         .collection('pedidos')
-        .where('userId', isEqualTo: userId)
-        .orderBy('data', descending: true);
+        .where('userId', isEqualTo: userId);
 
-    if (filtro == 'hoje') {
-      final inicio = DateTime(hoje.year, hoje.month, hoje.day);
-      final fim = inicio.add(const Duration(days: 1));
-      query = query.where('data', isGreaterThanOrEqualTo: inicio, isLessThan: fim);
-    } else if (filtro == 'semana') {
-      final inicio = DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day);
-      final fim = inicio.add(const Duration(days: 7));
-      query = query.where('data', isGreaterThanOrEqualTo: inicio, isLessThan: fim);
-    }
-
-    return query.snapshots().map(
-          (snapshot) => snapshot.docs
+    // Não aplicamos filtros de data diretamente na query → sem necessidade de índice
+    return query.snapshots().map((snapshot) {
+      final pedidos = snapshot.docs
           .map((doc) => Pedido.fromMap(doc.data() as Map<String, dynamic>, doc.id))
-          .toList(),
-    );
+          .toList();
+
+      // Filtro manual em memória
+      if (filtro == 'hoje') {
+        final inicio = DateTime(hoje.year, hoje.month, hoje.day);
+        final fim = inicio.add(const Duration(days: 1));
+        return pedidos
+            .where((p) => p.data.isAfter(inicio) && p.data.isBefore(fim))
+            .toList();
+      } else if (filtro == 'semana') {
+        final inicio = DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day);
+        final fim = inicio.add(const Duration(days: 7));
+        return pedidos
+            .where((p) => p.data.isAfter(inicio) && p.data.isBefore(fim))
+            .toList();
+      }
+
+      // 'todos'
+      return pedidos;
+    });
   }
 
   void _abrirDetalhes(Pedido pedido) {
@@ -100,7 +109,7 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
       ),
       body: Column(
         children: [
-          // filtro segmentado
+          // Filtro segmentado
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: SegmentedButton<String>(
@@ -138,6 +147,10 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                   }
 
                   final pedidos = snapshot.data ?? [];
+
+                  // Ordena localmente (mais recentes primeiro)
+                  pedidos.sort((a, b) => b.data.compareTo(a.data));
+
                   if (pedidos.isEmpty) {
                     return const Center(
                       child: Text(
@@ -147,127 +160,124 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
                     );
                   }
 
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: ListView.builder(
-                      key: ValueKey(filtro),
-                      padding: const EdgeInsets.all(12),
-                      itemCount: pedidos.length,
-                      itemBuilder: (context, index) {
-                        final pedido = pedidos[index];
-                        final dataFormatada =
-                        DateFormat('dd/MM/yyyy HH:mm').format(pedido.data);
+                  return ListView.builder(
+                    key: ValueKey(filtro),
+                    padding: const EdgeInsets.all(12),
+                    itemCount: pedidos.length,
+                    itemBuilder: (context, index) {
+                      final pedido = pedidos[index];
+                      final dataFormatada =
+                      DateFormat('dd/MM/yyyy HH:mm').format(pedido.data);
 
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: 2,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () => _abrirDetalhes(pedido),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: _statusBg(pedido.status),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      pedido.status == 'finalizado'
-                                          ? Icons.check
-                                          : pedido.status == 'em preparo'
-                                          ? Icons.kitchen
-                                          : pedido.status == 'pendente'
-                                          ? Icons.access_time
-                                          : Icons.cancel,
-                                      color: _statusColor(pedido.status),
-                                      size: 20,
-                                    ),
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        elevation: 2,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _abrirDetalhes(pedido),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _statusBg(pedido.status),
+                                    shape: BoxShape.circle,
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              "Pedido #${pedido.numeroPedido}",
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                  child: Icon(
+                                    pedido.status == 'finalizado'
+                                        ? Icons.check
+                                        : pedido.status == 'em preparo'
+                                        ? Icons.kitchen
+                                        : pedido.status == 'pendente'
+                                        ? Icons.access_time
+                                        : Icons.cancel,
+                                    color: _statusColor(pedido.status),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "Pedido #${pedido.numeroPedido}",
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            Text(
-                                              dataFormatada,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Text(
-                                              "Subtotal: ${_formatarValor(pedido.itens.fold(0.0, (s, i) => s + i.subtotal))}",
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            if (pedido.cupomAplicado != null)
-                                              Text(
-                                                pedido.cupomAplicado!.percentual
-                                                    ? "Desconto: ${pedido.cupomAplicado!.desconto.toStringAsFixed(0)}%"
-                                                    : "Desconto: R\$ ${pedido.cupomAplicado!.desconto.toStringAsFixed(2)}",
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: Colors.redAccent,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          "Total: ${_formatarValor(pedido.totalFinal)}",
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Chip(
-                                    label: Text(
-                                      pedido.status.toUpperCase(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                          Text(
+                                            dataFormatada,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    backgroundColor: _statusColor(pedido.status),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "Subtotal: ${_formatarValor(pedido.itens.fold(0.0, (s, i) => s + i.subtotal))}",
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          if (pedido.cupomAplicado != null)
+                                            Text(
+                                              pedido.cupomAplicado!.percentual
+                                                  ? "Desconto: ${pedido.cupomAplicado!.desconto.toStringAsFixed(0)}%"
+                                                  : "Desconto: R\$ ${pedido.cupomAplicado!.desconto.toStringAsFixed(2)}",
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.redAccent,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        "Total: ${_formatarValor(pedido.totalFinal)}",
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 12),
+                                Chip(
+                                  label: Text(
+                                    pedido.status.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  backgroundColor: _statusColor(pedido.status),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -300,12 +310,14 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
           const SizedBox(height: 10),
-          Text(
+          const Text(
             'Erro ao carregar pedidos',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13)),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             icon: const Icon(Icons.refresh),

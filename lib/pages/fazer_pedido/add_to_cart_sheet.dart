@@ -6,12 +6,19 @@ import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
 
-
 void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamento> acompanhamentosDisponiveis) {
   int quantidade = 1;
   String observacoes = '';
-  final List<Acompanhamento> selecionados = List.from(produto.acompanhamentosSelecionados ?? []);
 
+  // Inicializa 'selecionados' com as instâncias correspondentes em acompanhamentosDisponiveis (por id)
+  final List<Acompanhamento> selecionados = [
+    for (final s in produto.acompanhamentosSelecionados ?? [])
+      if (s.id != null)
+        (acompanhamentosDisponiveis.firstWhere(
+              (a) => a.id == s.id,
+          orElse: () => s,
+        ))
+  ];
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -19,56 +26,61 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
     builder: (context) {
       return DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.7,
+        initialChildSize: 0.85,
         minChildSize: 0.4,
-        maxChildSize: 0.9,
+        maxChildSize: 0.95,
         builder: (context, scrollController) {
           return StatefulBuilder(
             builder: (context, setState) {
-
-              double precoUnitario = PrecoHelper.calcularPrecoUnitario(
-                produto: produto,
-                selecionados: selecionados,
-              );
-
-              double precoAcompanhamentoCobrado(
-                  Acompanhamento a,
-                  List<Acompanhamento> selecionados,
-                  Produto produto,
-                  ) {
-                // Se não for prato, cobra sempre
-                if (produto.category.toLowerCase() != 'pratos') {
-                  return a.preco;
+              // --- Função que decide, de forma determinística, quais IDs serão cobrados ---
+              Set<String> calcularIdsCobrados(List<Acompanhamento> selecionadosLocal, Produto produtoLocal) {
+                // se não for prato, todos cobrados (por id)
+                if (produtoLocal.category.toLowerCase() != 'pratos') {
+                  return selecionadosLocal.map((e) => e.id).whereType<String>().toSet();
                 }
 
-                // Até 3 acompanhamentos grátis
-                if (selecionados.length <= 3) return 0.0;
+                const int limiteGratis = 3;
+                if (selecionadosLocal.length <= limiteGratis) return <String>{};
 
-                // Quantos acompanhamentos precisam ser cobrados
-                final numeroACobrar = selecionados.length - 3;
+                final numeroACobrar = selecionadosLocal.length - limiteGratis;
 
-                // Preços de todos selecionados, ordenados do menor para o maior
-                final precosOrdenados = selecionados.map((e) => e.preco).toList()..sort();
+                // Regra anterior: pega os menores preços para cobrar (valor mais baixo)
+                // 1) cria lista de preços ordenada (do menor para o maior)
+                final precosOrdenados = selecionadosLocal.map((e) => e.preco).toList()..sort();
 
-                // Pega os menores valores correspondentes ao número a cobrar
+                // 2) pega os menores N preços que serão cobrados
                 final valoresACobrar = precosOrdenados.take(numeroACobrar).toList();
 
-                // Map para contar quantas vezes cada valor deve ser cobrado
+                // 3) contagem de quantas vezes cada valor precisa ser cobrado
                 final Map<double, int> contagemValores = {};
                 for (var v in valoresACobrar) {
                   contagemValores[v] = (contagemValores[v] ?? 0) + 1;
                 }
 
-                // Se o acompanhamento 'a' estiver entre os valores a cobrar
-                if (contagemValores.containsKey(a.preco) && contagemValores[a.preco]! > 0) {
-                  contagemValores[a.preco] = contagemValores[a.preco]! - 1;
-                  return a.preco;
+                // 4) agora percorre os selecionados NA ORDEM DE SELEÇÃO e marca como cobrados
+                //    quando encontrar um preço que ainda tem contagem > 0, decremente e marque o id
+                final Set<String> ids = {};
+                for (final a in selecionadosLocal) {
+                  final p = a.preco;
+                  if (contagemValores.containsKey(p) && contagemValores[p]! > 0) {
+                    ids.add(a.id ?? '');
+                    contagemValores[p] = contagemValores[p]! - 1;
+                  }
                 }
 
-                // Grátis se não estiver entre os cobrados
-                return 0.0;
+                // filtra ids vazios/nulos (por segurança)
+                ids.removeWhere((id) => id.isEmpty);
+                return ids;
               }
 
+              // Precompute ids cobrados a cada build, usando 'selecionados' atual
+              final idsCobrados = calcularIdsCobrados(selecionados, produto);
+
+              // Preço unitário (usado no topo)
+              double precoUnitario = PrecoHelper.calcularPrecoUnitario(
+                produto: produto,
+                selecionados: selecionados,
+              );
 
 
               return Container(
@@ -96,6 +108,16 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                         ),
                       ),
 
+                      if (produto.imageUrl.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network(
+                            produto.imageUrl.first,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       // Nome do produto
                       Text(
                         produto.nome,
@@ -167,8 +189,11 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                               runSpacing: 8,
                               children: acompanhamentosDisponiveis.asMap().entries.map((entry) {
                                 final a = entry.value;
-                                final isSelected = selecionados.contains(a);
-                                final precoExtra = precoAcompanhamentoCobrado(a, selecionados, produto);
+                                // Seleção comparando por id (evita problemas de referência)
+                                final isSelected = selecionados.any((s) => s.id == a.id);
+
+                                // precoExtra determinado pela lista de ids cobrados calculada
+                                final precoExtra = idsCobrados.contains(a.id) ? a.preco : 0.0;
 
                                 return AnimatedScale(
                                   scale: isSelected ? 1.1 : 1.0,
@@ -269,7 +294,7 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 80),
                     ],
                   ),
                 ),

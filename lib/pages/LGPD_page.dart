@@ -7,15 +7,15 @@ class PoliticaPrivacidadePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          "Política de Privacidade",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.black.withOpacity(0.4),
-        elevation: 0,
-        centerTitle: true,
-      ),
+      // appBar: AppBar(
+      //   title: const Text(
+      //     "Política de Privacidade",
+      //     style: TextStyle(fontWeight: FontWeight.bold),
+      //   ),
+      //   backgroundColor: Colors.black.withOpacity(0.4),
+      //   elevation: 0,
+      //   centerTitle: true,
+      // ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -33,17 +33,17 @@ class PoliticaPrivacidadePage extends StatelessWidget {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                const SizedBox(height: kToolbarHeight + 40),
-                // Logo com animação
-                Hero(
-                  tag: 'logoPadaria',
-                  child: Image.asset(
-                    'assets/LogoPadariaVinhosBranco.png',
-                    height: MediaQuery.of(context).size.height * 0.20,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Cartão translúcido com rolagem
+                // const SizedBox(height: kToolbarHeight + 40),
+                // // Logo com animação
+                // Hero(
+                //   tag: 'logoPadaria',
+                //   child: Image.asset(
+                //     'assets/LogoPadariaVinhosBranco.png',
+                //     height: MediaQuery.of(context).size.height * 0.20,
+                //   ),
+                // ),
+                // const SizedBox(height: 24),
+                // // Cartão translúcido com rolagem
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(20),

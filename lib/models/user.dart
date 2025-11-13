@@ -35,11 +35,22 @@ class User {
   double get longitude => location.longitude;
 
   String get enderecoFormatado {
-    final ramal = ramalApartamento != null && ramalApartamento!.isNotEmpty
-        ? ' - Apt $ramalApartamento'
-        : '';
-    return '$endereco, $numeroEndereco - CEP: $cep ($tipoResidencia$ramal)';
+    if (endereco.isEmpty && numeroEndereco.isEmpty && cep.isEmpty) {
+      return '';
+    }
+
+    final partes = [
+      if (endereco.isNotEmpty) endereco,
+      if (numeroEndereco.isNotEmpty) numeroEndereco,
+      if (ramalApartamento != null && ramalApartamento!.isNotEmpty)
+        'Apt $ramalApartamento',
+      if (cep.isNotEmpty) 'CEP: $cep',
+      tipoResidencia.isNotEmpty ? tipoResidencia : 'Casa',
+    ];
+
+    return partes.join(', ');
   }
+
 
   String get telefoneWhatsApp {
     String digits = telefone.replaceAll(RegExp(r'\D'), ''); // remove tudo que não é número
@@ -84,7 +95,7 @@ class User {
       'nome': nome,
       'endereco': endereco,
       'numeroEndereco': numeroEndereco,
-      'telefone': telefoneWhatsApp,
+      'telefone': telefone,
       'email': email,
       'role': role,
       'createdAt': createdAt,
@@ -105,10 +116,10 @@ class User {
       telefone: map['telefone'] ?? '',
       email: map['email'] ?? '',
       role: map['role'] ?? 'cliente',
-      createdAt: map['created_at'] is Timestamp
-          ? map['created_at']
-          : (map['createdAt'] is Timestamp
+      createdAt: map['createdAt'] is Timestamp
           ? map['createdAt']
+          : (map['created_at'] is Timestamp
+          ? map['created_at']
           : Timestamp.now()),
       cep: map['cep'] ?? '',
       tipoResidencia: map['tipo_residencia'] ?? 'casa',
