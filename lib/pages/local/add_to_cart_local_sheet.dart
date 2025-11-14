@@ -17,7 +17,6 @@ void showAddToCartSheetLocal(
   final List<Acompanhamento> selecionados =
   List.from(produto.acompanhamentosSelecionados ?? []);
 
-  // Puxando a mesa e posição do provider
   final pedidoLocal = Provider.of<PedidoLocalProvider>(context, listen: false);
   final mesaSelecionada = pedidoLocal.numeroMesa ?? '';
   final posicaoSelecionada = pedidoLocal.posicaoMesa;
@@ -86,8 +85,9 @@ void showAddToCartSheetLocal(
               );
 
               Widget acompanhamentosSelector() {
-                if (acompanhamentosDisponiveis.isEmpty)
+                if (acompanhamentosDisponiveis.isEmpty) {
                   return const SizedBox.shrink();
+                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -170,7 +170,6 @@ void showAddToCartSheetLocal(
                         offset: Offset(0, 10)),
                   ],
                 ),
-
                 padding: const EdgeInsets.all(16),
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -220,8 +219,8 @@ void showAddToCartSheetLocal(
                       ),
                       const SizedBox(height: 16),
 
-                      // Mostra apenas resumo da mesa selecionada no splash
-                      if (mesaSelecionada.isNotEmpty && posicaoSelecionada != null)
+                      if (mesaSelecionada.isNotEmpty &&
+                          posicaoSelecionada != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               vertical: 8, horizontal: 16),
@@ -231,7 +230,7 @@ void showAddToCartSheetLocal(
                             border: Border.all(color: Colors.brown.shade200),
                           ),
                           child: Text(
-                            'Mesa $mesaSelecionada | Posição P${posicaoSelecionada + 1}',
+                            'Mesa $mesaSelecionada | Posicao P${posicaoSelecionada + 1}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.brown,
@@ -257,9 +256,11 @@ void showAddToCartSheetLocal(
                       acompanhamentosSelector(),
                       const SizedBox(height: 20),
 
+                      // 🔹 BOTÃO ATUALIZADO 🔹
                       ElevatedButton.icon(
-                        onPressed: () {
-                          if (mesaSelecionada.isEmpty || posicaoSelecionada == null) {
+                        onPressed: () async {
+                          if (mesaSelecionada.isEmpty ||
+                              posicaoSelecionada == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -279,13 +280,26 @@ void showAddToCartSheetLocal(
                             preco: precoUnitario,
                           );
 
-                          pedidoLocal.adicionarItem(novoItem);
+                          try {
+                            // 🔹 Garante que o pedido existe
+                            await pedidoLocal.abrirOuRecuperarPedido();
 
-                          Navigator.of(context).pop();
-                          DialogHelper.showTemporaryToast(
-                            context,
-                            'Adicionado: $quantidade x ${produto.nome} (Mesa $mesaSelecionada - P${posicaoSelecionada + 1})',
-                          );
+                            // 🔹 Salva o item direto no Firestore
+                            await pedidoLocal.adicionarItem(novoItem);
+
+                            Navigator.of(context).pop();
+                            DialogHelper.showTemporaryToast(
+                              context,
+                              'Adicionado: $quantidade x ${produto.nome} (Mesa $mesaSelecionada - P${posicaoSelecionada + 1})',
+                            );
+                          } catch (e) {
+                            debugPrint('❌ Erro ao adicionar item: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Erro ao adicionar item: ${e.toString()}')),
+                            );
+                          }
                         },
                         icon: const Icon(Icons.add_shopping_cart),
                         label: const Text('Adicionar ao Pedido Local'),

@@ -51,8 +51,13 @@ class _ListaPedidosPageState extends State<ListaPedidosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/admin'),
+        ),
         title: const Text('Pedidos'),
         actions: [
+          const SizedBox(height: 16),
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) => setState(() => filtro = value),

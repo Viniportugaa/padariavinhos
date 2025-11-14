@@ -144,17 +144,17 @@ class ProdutosLocalSection extends StatelessWidget {
                       double aspectRatio;
 
                       if (constraints.maxWidth >= 1400) {
+                        crossAxisCount = 6;
+                        aspectRatio = 0.5;
+                      } else if (constraints.maxWidth >= 1100) {
                         crossAxisCount = 5;
                         aspectRatio = 1.0;
-                      } else if (constraints.maxWidth >= 1100) {
-                        crossAxisCount = 4;
-                        aspectRatio = 1.0;
                       } else if (constraints.maxWidth >= 800) {
-                        crossAxisCount = 3;
-                        aspectRatio = 1.0;
+                        crossAxisCount = 4;
+                        aspectRatio = 0.5;
                       } else if (constraints.maxWidth >= 600) {
-                        crossAxisCount = 2;
-                        aspectRatio = 1.0;
+                        crossAxisCount = 4;
+                        aspectRatio = 0.5;
                       } else {
                         crossAxisCount = 1;
                         aspectRatio = 1.0;
@@ -175,6 +175,7 @@ class ProdutosLocalSection extends StatelessWidget {
                           return AspectRatio(
                             aspectRatio: 1,
                             child: ProductCardQuadrado(
+                              key: ValueKey(produto.id),
                               produto: produto,
                               acompanhamentos: acompanhamentos
                                   .where((a) =>

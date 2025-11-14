@@ -71,6 +71,67 @@ class _PedidoCardState extends State<PedidoCard>
 
   String _formatarValor(double valor) => "R\$ ${valor.toStringAsFixed(2)}";
 
+  /// ----------------------------------------
+  ///   ALTERAR VALOR DO PEDIDO (BOTÃO)
+  /// ----------------------------------------
+  Future<void> _alterarValorPedido(BuildContext context, Pedido pedido) async {
+    final controller = TextEditingController(
+      text: pedido.totalFinal.toStringAsFixed(2),
+    );
+
+    final novoValor = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Alterar Valor do Pedido"),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: "Novo valor",
+              prefixText: "R\$ ",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: const Text("Salvar"),
+              onPressed: () {
+                final valor = double.tryParse(
+                  controller.text.replaceAll(",", "."),
+                );
+                if (valor != null) {
+                  Navigator.pop(context, valor);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (novoValor != null) {
+      final atualizado = pedido.copyWith(totalFinal: novoValor);
+
+      setState(() {}); // atualiza o card imediatamente
+
+      await context.read<PedidoProvider>().alterarValor(atualizado, novoValor);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Valor do pedido atualizado!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pedido = widget.pedido;
@@ -226,11 +287,19 @@ class _PedidoCardState extends State<PedidoCard>
                           backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: () => context
-                            .read<PedidoProvider>()
-                            .colocarEmPreparo(pedido),
+                        onPressed: () {
+                          final atualizado =
+                          pedido.copyWith(status: "em preparo");
+
+                          context
+                              .read<PedidoProvider>()
+                              .colocarEmPreparo(atualizado);
+
+                          setState(() {});
+                        },
                         label: const Text('Em Preparo'),
                       ),
+
                     if (pedido.status == 'em preparo')
                       ElevatedButton.icon(
                         icon: const Icon(Icons.check_circle_outline),
@@ -238,10 +307,19 @@ class _PedidoCardState extends State<PedidoCard>
                           backgroundColor: Colors.green.shade600,
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: () =>
-                            context.read<PedidoProvider>().finalizar(pedido),
+                        onPressed: () {
+                          final atualizado =
+                          pedido.copyWith(status: "finalizado");
+
+                          context
+                              .read<PedidoProvider>()
+                              .finalizar(atualizado);
+
+                          setState(() {});
+                        },
                         label: const Text('Finalizar'),
                       ),
+
                     if (pedido.status == 'pendente' ||
                         pedido.status == 'em preparo')
                       ElevatedButton.icon(
@@ -254,6 +332,7 @@ class _PedidoCardState extends State<PedidoCard>
                             _confirmarCancelamento(context, pedido),
                         label: const Text('Cancelar'),
                       ),
+
                     ElevatedButton.icon(
                       icon: const Icon(Icons.print),
                       style: ElevatedButton.styleFrom(
@@ -263,7 +342,7 @@ class _PedidoCardState extends State<PedidoCard>
                       onPressed: () {
                         if (widget.usuario != null) {
                           context.read<PedidoProvider>().imprimirPedido(
-                            widget.pedido,
+                            pedido,
                             widget.usuario!,
                             context,
                           );
@@ -276,6 +355,20 @@ class _PedidoCardState extends State<PedidoCard>
                       },
                       label: const Text('Imprimir'),
                     ),
+
+                    // ------------------ BOTÃO ALTERAR VALOR ------------------
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.attach_money),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () =>
+                          _alterarValorPedido(context, pedido),
+                      label: const Text("Alterar Valor"),
+                    ),
+                    // ---------------------------------------------------------
+
                     OutlinedButton.icon(
                       icon: const Icon(Icons.receipt_long_outlined),
                       label: const Text('Ver Detalhes'),
@@ -285,7 +378,8 @@ class _PedidoCardState extends State<PedidoCard>
                         foregroundColor: Colors.black87,
                         side: const BorderSide(color: Colors.black26),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],
@@ -304,7 +398,9 @@ class _PedidoCardState extends State<PedidoCard>
       context: context,
       builder: (_) => MotivoCancelamentoDialog(
         onConfirmar: (motivo) async {
-          await context.read<PedidoProvider>().cancelarComMotivo(pedido, motivo);
+          await context
+              .read<PedidoProvider>()
+              .cancelarComMotivo(pedido, motivo);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

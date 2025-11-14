@@ -80,6 +80,7 @@ class ItemCarrinho {
       'quantidade': quantidade,
       'preco': preco,
       'precoUnitario': precoUnitarioCustom,
+      'subtotal': subtotal,
       'observacao': observacao,
       'acompanhamentos': acompanhamentos != null
           ? acompanhamentos!.map((a) => a.toMap()).toList()

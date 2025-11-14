@@ -41,9 +41,8 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
 
   Future<void> _enviarPedido(BuildContext context) async {
     final pedidoProvider = context.read<PedidoLocalProvider>();
-    final itens = pedidoProvider.itens;
 
-    if (itens.isEmpty) {
+    if (pedidoProvider.itens.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Adicione itens ao pedido antes de enviar.')),
       );
@@ -53,35 +52,18 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
     setState(() => isLoading = true);
 
     try {
-      final agora = DateTime.now();
-      final pedido = PedidoLocal(
-        id: '',
-        mesa: widget.numeroMesa,
-        posicao: widget.posicaoMesa,
-        itens: itens,
-        status: 'pendente',
-        data: agora,
-        horaFormatada: DateFormat('HH:mm').format(agora),
-        observacoes: observacoesController.text.trim().isEmpty
-            ? null
-            : observacoesController.text.trim(),
+
+
+
+      await pedidoProvider.finalizarPedido(
+        formaPagamento: 'dinheiro',
       );
-
-      final pedidosRef = FirebaseFirestore.instance.collection('pedidos_local');
-      final docRef = await pedidosRef.add(pedido.toMap());
-      await pedidosRef.doc(docRef.id).update({
-        'id': docRef.id,
-        'formaPagamento': formaPagamento ?? 'Não informado',
-        'gorjeta': gorjetaPercentual ?? 0,
-      });
-
-      pedidoProvider.limparItens();
 
       if (mounted) {
         setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Pedido enviado com sucesso!'),
+            content: Text('Pedido finalizado com sucesso!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -97,6 +79,7 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

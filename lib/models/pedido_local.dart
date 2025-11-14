@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:intl/intl.dart';
+import 'package:padariavinhos/models/item_carrinho.dart';
 
 class PedidoLocal {
   final String id;
@@ -11,6 +11,7 @@ class PedidoLocal {
   final DateTime data;
   final String horaFormatada;
   final String? observacoes;
+  final double total;
 
   PedidoLocal({
     required this.id,
@@ -20,16 +21,15 @@ class PedidoLocal {
     required this.status,
     required this.data,
     required this.horaFormatada,
+    required this.total,
     this.observacoes,
   });
 
-  /// 🔹 Calcula o total do pedido
-  double get total => itens.fold(0.0, (sum, item) => sum + item.subtotal);
-
   /// 🔹 Retorna o total formatado como moeda
-  String get totalFormatado => NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$')
-      .format(total);
+  String get totalFormatado =>
+      NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(total);
 
+  /// 🔹 Converte o pedido em Map para salvar no Firestore
   Map<String, dynamic> toMap() {
     return {
       'mesa': mesa,
@@ -38,23 +38,36 @@ class PedidoLocal {
       'data': Timestamp.fromDate(data),
       'horaFormatada': horaFormatada,
       'observacoes': observacoes ?? '',
+      'total': total,
       'itens': itens.map((item) => item.toMap()).toList(),
     };
   }
 
+  /// 🔹 Cria o pedido a partir do documento principal (sem itens ainda)
   factory PedidoLocal.fromMap(Map<String, dynamic> map, String id) {
     return PedidoLocal(
       id: id,
-      mesa: map['mesa'] ?? '',
+      mesa: map['mesa']?.toString() ?? '',
       posicao: map['posicao'] ?? 0,
       status: map['status'] ?? 'pendente',
       data: (map['data'] as Timestamp).toDate(),
       horaFormatada: map['horaFormatada'] ?? '',
       observacoes: map['observacoes'] ?? '',
-      itens: (map['itens'] as List<dynamic>?)
-          ?.map((i) => ItemCarrinho.fromMap(Map<String, dynamic>.from(i)))
-          .toList() ??
-          [],
+      total: (map['total'] ?? 0).toDouble(),
+      itens: const [], // será carregado depois
     );
+  }
+
+  /// 🔹 Busca os itens da subcoleção 'itens' de um pedido
+  static Future<List<ItemCarrinho>> carregarItens(String pedidoId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('pedidos_local')
+        .doc(pedidoId)
+        .collection('itens')
+        .get();
+
+    return snapshot.docs.map((doc) {
+      return ItemCarrinho.fromMap(doc.data());
+    }).toList();
   }
 }

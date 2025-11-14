@@ -4,6 +4,9 @@ class Acompanhamento {
   bool disponivel;
   double preco;
 
+  @override
+  String toString() => '$nome (${preco.toStringAsFixed(2)})';
+
   Acompanhamento({
     this.id,
     required this.nome,

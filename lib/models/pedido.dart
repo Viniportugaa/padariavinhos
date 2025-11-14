@@ -147,6 +147,50 @@ class Pedido {
     );
   }
 
+  Pedido copyWith({
+    int? numeroPedido,
+    String? id,
+    String? userId,
+    String? nomeUsuario,
+    String? telefone,
+    List<ItemCarrinho>? itens,
+    double? totalFinal,
+    String? status,
+    DateTime? data,
+    bool? impresso,
+    String? endereco,
+    List<String>? formaPagamento,
+    double? frete,
+    String? tipoEntrega,
+    DateTime? dataHoraEntrega,
+    Cupom? cupomAplicado,
+    double? valorPago,
+    double? troco,
+    String? motivoCancelamento,
+  }) {
+    return Pedido(
+      id: id ?? this.id,
+      numeroPedido: numeroPedido ?? this.numeroPedido,
+      userId: userId ?? this.userId,
+      nomeUsuario: nomeUsuario ?? this.nomeUsuario,
+      telefone: telefone ?? this.telefone,
+      itens: itens ?? this.itens,
+      totalFinal: totalFinal ?? this.totalFinal,
+      status: status ?? this.status,
+      data: data ?? this.data,
+      impresso: impresso ?? this.impresso,
+      endereco: endereco ?? this.endereco,
+      formaPagamento: formaPagamento ?? this.formaPagamento,
+      frete: frete ?? this.frete,
+      tipoEntrega: tipoEntrega ?? this.tipoEntrega,
+      dataHoraEntrega: dataHoraEntrega ?? this.dataHoraEntrega,
+      cupomAplicado: cupomAplicado ?? this.cupomAplicado,
+      valorPago: valorPago ?? this.valorPago,
+      troco: troco ?? this.troco,
+      motivoCancelamento: motivoCancelamento ?? this.motivoCancelamento,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'numeroPedido': numeroPedido,
@@ -170,5 +214,6 @@ class Pedido {
       'troco': troco,
       'motivoCancelamento': motivoCancelamento,
     };
+
   }
 }

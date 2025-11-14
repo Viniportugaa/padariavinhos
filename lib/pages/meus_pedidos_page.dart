@@ -109,6 +109,19 @@ class _MeuPedidoPageState extends State<MeuPedidoPage> {
       ),
       body: Column(
         children: [
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Voltar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
           // Filtro segmentado
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),

@@ -32,6 +32,29 @@ class PedidoProvider extends ChangeNotifier {
     await _pedidoService.ajustarValorPedido(pedido.id, pedido.totalFinal);
   }
 
+
+  // ----------------- Alterar valor do pedido -----------------
+  Future<void> alterarValor(Pedido pedido, double novoValor) async {
+    try {
+      final atualizado = pedido.copyWith(totalFinal: novoValor);
+
+      // Atualiza localmente
+      pedido.status = pedido.status; // mantém estado
+      notifyListeners();
+
+      // Atualiza no Firestore
+      await _firestore.collection('pedidos').doc(pedido.id).update({
+        'totalFinal': novoValor,
+      });
+
+      await _pedidoService.ajustarValorPedido(pedido.id, novoValor);
+
+    } catch (e) {
+      debugPrint("Erro ao atualizar valor do pedido: $e");
+    }
+  }
+
+
   Future<void> cancelar(Pedido pedido) async {
     pedido.status = PedidoStatus.cancelado;
     notifyListeners();
