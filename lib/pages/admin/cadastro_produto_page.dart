@@ -260,7 +260,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
         ElevatedButton.icon(
           onPressed: _selecionarImagens,
           icon: const Icon(Icons.image),
-          label: const Text('Selecionar imagens da Galeria'),
+          label: const Text('Selecionar imagem da Galeria'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.deepOrange,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

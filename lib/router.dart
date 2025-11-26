@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
 import 'package:padariavinhos/pages/local/local_splash_screen.dart';
 import 'package:padariavinhos/pages/local/painel_balcao_page.dart';
 import 'package:padariavinhos/pages/local/fazer_pedido_local_page.dart';
+import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
 import 'package:padariavinhos/pages/admin/cadastro_acompanhamento_page.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/conclusao_pedido_page.dart';
@@ -19,6 +19,7 @@ import 'package:padariavinhos/pages/splash_screen.dart';
 import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:padariavinhos/pages/admin/menu_admin.dart';
 import 'package:padariavinhos/notifiers/auth_notifier.dart';
+import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/helpers/transitions.dart';
 import 'package:padariavinhos/pages/meus_pedidos_page.dart';
 import 'package:padariavinhos/pages/LGPD_page.dart';
@@ -31,6 +32,8 @@ import 'package:padariavinhos/pages/admin/relatorio_page.dart';
 import 'package:padariavinhos/pages/admin/relatorio_cliente.dart';
 import 'package:padariavinhos/custom_shell.dart';
 import 'package:padariavinhos/pages/admin/cupons_admin_page.dart';
+import 'package:padariavinhos/pages/local/local_splash_screen.dart';
+import 'package:padariavinhos/pages/fazer_pedido/sections/visualizar_cardapio_page.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -38,49 +41,51 @@ GoRouter createRouter(AuthNotifier authNotifier) {
     refreshListenable: authNotifier,
 
     redirect: (context, state) {
-      final isLogged = authNotifier.isAuthenticated;
+      final isLoggedIn = authNotifier.isAuthenticated;
       final isOnline = authNotifier.isOnline;
       final role = authNotifier.role;
+      final location = state.matchedLocation;
       final splashDone = authNotifier.splashFinished;
-      final loc = state.matchedLocation;
 
-      debugPrint('[Router] loc=$loc role=$role');
+      debugPrint(
+          '[Redirect] loc=$location | role=$role | loggedIn=$isLoggedIn | splash=$splashDone');
 
-      // SPLASH ainda carregando
+      // 1️⃣ Espera o splash terminar
       if (!splashDone) return null;
 
-      // NÃO logado → só permite login/signup/lgpd/offline
-      if (!isLogged) {
-        final publico = [
-      '/login',
-      '/signup',
-      '/lgpd',
-      '/offline',
-      ];
-      if (publico.any((e) => loc.startsWith(e))) return null;
-      return '/login';
+      // 2️⃣ Se não está logado → login
+      if (!isLoggedIn) {
+        if (!['/login', '/signup', '/lgpd', '/offline'].contains(location)) {
+          return '/login';
+        }
+        return null;
       }
 
-      // COM login — ROLE obrigatório
-      if (role == null || role.isEmpty) return null;
-
-      // pós login → define home por role
-      if (loc.startsWith('/splash') ||
-      loc.startsWith('/login') ||
-      loc.startsWith('/signup')) {
-      if (role == 'admin') return '/admin';
-      if (role == 'cliente_local') return '/local-splash';
-      return '/menu';
+      // 3️⃣ Espera role carregar
+      if (role == null || role.isEmpty) {
+        return null;
       }
 
-      // bloqueio de admin
-      if (role == 'admin' && loc.startsWith('/menu')) return '/admin';
-      if (role != 'admin' && loc.startsWith('/admin')) return '/menu';
+      // 4️⃣ Pós-login ou splash: redireciona conforme role
+      if (location == '/splash' || location == '/login' || location == '/signup') {
+        if (role == 'admin') return '/admin';
+        if (role == 'cliente_local') return '/local-splash';
+        return '/menu';
+      }
 
-      // offline bloqueia páginas críticas
-      if (!isOnline &&
-      ['/menu', '/pedido', '/orcamento'].any(loc.startsWith)) {
-      return '/offline';
+      // 5️⃣ Se admin está em /menu, manda pro /admin
+      if (role == 'admin' && location.startsWith('/menu')) {
+        return '/admin';
+      }
+
+      // 6️⃣ Se cliente tenta acessar admin, bloqueia
+      if (role != 'admin' && location.startsWith('/admin')) {
+        return '/menu';
+      }
+
+      // 7️⃣ Se estiver offline e rota requer internet
+      if (['/menu', '/pedido', '/orcamento'].contains(location) && !isOnline) {
+        return '/offline';
       }
 
       return null;
@@ -92,78 +97,122 @@ GoRouter createRouter(AuthNotifier authNotifier) {
     ),
 
     routes: [
-
-      // --------------------------
-      // PÚBLICAS
-      // --------------------------
       GoRoute(
         path: '/splash',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const SplashScreen(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const SplashScreen(), state: state),
       ),
-      GoRoute(
-        path: '/login',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const LoginPage(), state: s),
-      ),
-      GoRoute(
-        path: '/signup',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const SignUpPage(), state: s),
-      ),
-      GoRoute(
-        path: '/lgpd',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const PoliticaPrivacidadePage(), state: s),
-      ),
-      GoRoute(
-        path: '/offline',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const OfflinePage(), state: s),
-      ),
-
-      // --------------------------
-      // ADMIN
-      // --------------------------
       GoRoute(
         path: '/admin',
-        pageBuilder: (c, s) =>
-            fadeTransitionPage(child: const MenuAdmin(), state: s),
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: const MenuAdmin(), state: state),
       ),
+
       GoRoute(
         path: '/acomp',
-        pageBuilder: (c, s) =>
-            fadeTransitionPage(child: const CadastroAcompanhamentoPage(), state: s),
+        pageBuilder: (context, state) =>
+            fadeTransitionPage(child: const CadastroAcompanhamentoPage(), state: state),
       ),
+
+      GoRoute(
+        path: '/imagem-produto',
+        pageBuilder: (context, state) {
+          final produto = state.extra as Produto;
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: ImagemProdutoPage(produto: produto),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+          );
+        },
+      ),
+
       GoRoute(
         path: '/listaproduto',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: AdminProdutosPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: AdminProdutosPage(), state: state),
       ),
+
       GoRoute(
         path: '/cupomadmin',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: CuponsAdminPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: CuponsAdminPage(), state: state),
       ),
+
+      GoRoute(
+        path: '/local-splash',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: LocalSplashScreen(), state: state),
+      ),
+
       GoRoute(
         path: '/relatorio-clientes',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: RelatorioClientesPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: RelatorioClientesPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/local2',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: FazerPedidoLocalPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/local',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: PainelBalcaoPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/lista',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: ListaPedidosPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/signin',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: LoginPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/signup',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: SignUpPage(), state: state),
       ),
       GoRoute(
         path: '/relatorio',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: const RelatorioPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const RelatorioPage(), state: state),
       ),
       GoRoute(
         path: '/banneradmin',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: AdminBannersPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: AdminBannersPage(), state: state),
       ),
       GoRoute(
         path: '/categoriadmin',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: CriarCategoriaPage(), state: s),
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: CriarCategoriaPage(), state: state),
+      ),
+      GoRoute(
+        path: '/lgpd',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const PoliticaPrivacidadePage(), state: state),
+      ),
+      GoRoute(
+        path: '/visualizar-cardapio',
+        builder: (context, state) {
+          final imagens = state.extra as List<String>;
+          return VisualizarCardapioPage(
+            frente: imagens[0],
+            verso: imagens[1],
+          );
+        },
       ),
       GoRoute(
         path: '/cadastro-produto',
@@ -175,56 +224,44 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (c, s) =>
             scaleTransitionPage(child: ConfigAberturaPage(), state: s),
       ),
-
-      // --------------------------
-      // LOCAL (mesa / balcão)
-      // --------------------------
       GoRoute(
-        path: '/local-splash',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: LocalSplashScreen(), state: s),
-      ),
-      GoRoute(
-        path: '/local2',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: FazerPedidoLocalPage(), state: s),
-      ),
-      GoRoute(
-        path: '/local',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: PainelBalcaoPage(), state: s),
-      ),
-
-      // --------------------------
-      // LISTA DE PEDIDOS (admin)
-      // --------------------------
-      GoRoute(
-        path: '/lista',
-        pageBuilder: (c, s) =>
-            scaleTransitionPage(child: ListaPedidosPage(), state: s),
-      ),
-
-      // --------------------------
-      // IMAGEM DO PRODUTO
-      // --------------------------
-      GoRoute(
-        path: '/imagem-produto',
-        pageBuilder: (context, state) {
+        path: '/imagem-produto/:id',
+        builder: (context, state) {
           final produto = state.extra as Produto;
-          return fadeTransitionPage(
-            child: ImagemProdutoPage(produto: produto),
-            state: state,
-          );
+          return ImagemProdutoPage(produto: produto);
         },
       ),
+      GoRoute(
+        path: '/offline',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const OfflinePage(), state: state),
+      ),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const LoginPage(), state: state),
+      ),
 
-      // --------------------------
-      // ÁREA DO CLIENTE (SHELL)
-      // --------------------------
+      GoRoute(
+        path: '/signup',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: const SignUpPage(), state: state),
+      ),
+      GoRoute(
+        path: '/quem-somos',
+        pageBuilder: (c, s) => scaleTransitionPage(
+          child: const QuemSomosPage(),
+          state: s,
+        ),
+      ),
+      GoRoute(
+        path: '/cadastro-produto',
+        pageBuilder: (c, s) =>
+            scaleTransitionPage(child: CadastroProdutoPage(), state: s),
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             CustomShell(child: child, state: state),
-
         routes: [
           GoRoute(
             path: '/menu',
@@ -269,7 +306,9 @@ class _RedirectToMenuState extends State<_RedirectToMenu> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.go('/menu');
+      if (mounted) {
+        context.go('/menu');
+      }
     });
   }
 

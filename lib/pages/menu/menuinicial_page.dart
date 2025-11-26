@@ -136,7 +136,6 @@ class _MenuInicialViewState extends State<_MenuInicialView> {
                     largura: screenWidth,
                   ),
                   const SizedBox(height: 40),
-                  const AuthStatusPanel(),
                 ],
               ),
             ),

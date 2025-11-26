@@ -27,115 +27,153 @@ class MenuAdmin extends StatelessWidget {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 🔹 LOGO CENTRALIZADA
+                /// LOGO
                 Hero(
                   tag: 'logo-admin',
                   child: Image.asset(
                     'assets/LogoPadariaVinhosBranco.png',
-                    height: largura * 0.15,
+                    height: largura * 0.18,
                     fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 24),
 
-                // 🔹 Botão Principal: Ver Pedidos
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 32),
+
+                /// BOTÃO PRINCIPAL
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.4),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
-                      elevation: 8,
-                    ),
-                    icon: const Icon(Icons.receipt_long, size: 28, color: Colors.white),
-                    label: const Text(
-                      'Ver Pedidos Ativos',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
                     ),
                     onPressed: () => context.go('/lista'),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.receipt_long, size: 30, color: Colors.white),
+                        SizedBox(width: 12),
+                        Text(
+                          'Ver Pedidos Ativos',
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 36),
 
-                // 🔹 GRID ADMINISTRATIVO (responsivo)
-                GridView.count(
-                  crossAxisCount: isTablet ? 4 : 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.15,
-                  children: [
-                    buildMenuBotao(context, 'Produtos', Icons.shopping_basket,
-                        Colors.blueAccent, '/listaproduto',
-                        largura: largura),
-                    buildMenuBotao(context, 'Acompanhamentos', Icons.fastfood,
-                        Colors.teal, '/acomp',
-                        largura: largura),
-                    buildMenuBotao(context, 'Novo Produto', Icons.add_box,
-                        Colors.orange, '/cadastro-produto',
-                        largura: largura),
-                    buildMenuBotao(context, 'Banners', Icons.image,
-                        Colors.purple, '/banneradmin',
-                        largura: largura),
-                    buildMenuBotao(context, 'Local Admin Painel', Icons.store, Colors.indigo,
-                        '/local', largura: largura),
-                    buildMenuBotao(context, 'Local Fazer Pedido'  ,
-                        Icons.store_mall_directory, Colors.pinkAccent, '/local2',
-                        largura: largura),
-                    buildMenuBotao(context, 'Cupons', Icons.monetization_on,
-                        Colors.amber, '/cupomadmin',
-                        largura: largura),
-                    buildMenuBotao(context, 'Categorias', Icons.category,
-                        Colors.indigoAccent, '/categoriadmin',
-                        largura: largura),
-                    buildMenuBotao(context, 'Relatórios', Icons.bar_chart,
-                        Colors.amber.shade700, '/relatorio',
-                        largura: largura),
-                    buildMenuBotao(context, 'Combos', Icons.layers, Colors.red,
-                        '/comboadmin', largura: largura),
-                    buildMenuBotao(context, 'Horário', Icons.access_time,
-                        Colors.deepOrange, '/config-abertura',
-                        largura: largura),
-
-                    // 🔹 Botão de Sair
-                    buildMenuBotao(context, 'Sair', Icons.logout, Colors.grey,
-                        null,
-                        isLogout: true, largura: largura),
-                  ],
-                ),
-
-                const SizedBox(height: 30),
-
-                // 🔹 Painel de autenticação e status
-                Card(
-                  color: Colors.white.withOpacity(0.1),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                /// BLOCO COM BACKGROUND SUTIL
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.07),
+                      width: 1,
+                    ),
                   ),
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  child: const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: AuthStatusPanel(),
+                  child: Column(
+                    children: [
+                      /// TÍTULO DO MENU
+                      Text(
+                        'Ferramentas Administrativas',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      /// GRID MELHOR ORGANIZADO
+                      GridView.count(
+                        crossAxisCount: isTablet ? 4 : 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 5,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 2.00,
+                        children: [
+                          buildMenuBotao(context, 'Produtos', Icons.shopping_basket,
+                              Colors.blueAccent, '/listaproduto',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Acomp', Icons.fastfood,
+                              Colors.teal, '/acomp',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'New Prod.', Icons.add_box,
+                              Colors.orange, '/cadastro-produto',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Banners', Icons.image,
+                              Colors.purple, '/banneradmin',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Local ADM', Icons.store,
+                              Colors.indigo, '/local',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Local User',
+                              Icons.store_mall_directory, Colors.pinkAccent, '/local2',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Cupons', Icons.monetization_on,
+                              Colors.amber, '/cupomadmin',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Categ.', Icons.category,
+                              Colors.indigoAccent, '/categoriadmin',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Relatórios', Icons.bar_chart,
+                              Colors.amber, '/relatorio',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'Horário', Icons.access_time,
+                              Colors.deepOrange, '/config-abertura',
+                              largura: largura),
+
+                          /// SAIR
+                          buildMenuBotao(context, 'Sair', Icons.logout, Colors.grey,
+                              null,
+                              isLogout: true,
+                              largura: largura),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // 🔹 Rodapé
+
+
+                /// RODAPÉ
                 Text(
                   '© 2025 Padaria & Vinhos • Painel do Administrador',
                   textAlign: TextAlign.center,
@@ -144,7 +182,8 @@ class MenuAdmin extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 12),
               ],
             ),
           ),

@@ -169,12 +169,37 @@ class ConclusaoPedidoController extends ChangeNotifier {
     );
   }
 
-  /// Modal de seleção de data e hora (sua lógica preservada)
+  bool _carrinhoPossuiFestividade(BuildContext context) {
+    final carrinho = Provider.of<CarrinhoProvider>(context, listen: false);
+    return carrinho.itens.any((item) => item.produto.category == "Festividade");
+  }
+
   Future<DateTime?> _mostrarModalSelecionarDataHora(BuildContext context) async {
     final config = Provider.of<ConfigNotifier>(context, listen: false);
     final now = DateTime.now();
 
-    // Se não for entrega, pergunta se quer definir data/hora
+    final possuiFestividade = _carrinhoPossuiFestividade(context);
+
+    // Aviso se for festividade
+    if (possuiFestividade) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Atenção"),
+          content: const Text(
+            "Itens de FESTIVIDADE exigem agendamento mínimo de 2 dias de antecedência.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Para retirada e no local → perguntar se deseja horário
     if (_tipoEntrega != TipoEntrega.entrega) {
       final selecionar = await showDialog<bool>(
         context: context,
@@ -194,11 +219,24 @@ class ConclusaoPedidoController extends ChangeNotifier {
       if (selecionar != true) return null;
     }
 
-    // Datas possíveis: próximos 14 dias
+    /// ------------------------------
+    ///        SELEÇÃO DE DATA
+    /// ------------------------------
     final datas = List.generate(14, (i) => now.add(Duration(days: i)));
+
+    late final List<DateTime> datasFiltradas;
+
+    if (possuiFestividade) {
+      final limite = DateTime(now.year, now.month, now.day)
+          .add(const Duration(days: 2)); // FESTIVIDADE = 2 DIAS MÍNIMO
+
+      datasFiltradas = datas.where((d) => d.isAfter(limite)).toList();
+    } else {
+      datasFiltradas = datas;
+    }
+
     DateTime? selectedDate;
 
-    // Seleção de data
     selectedDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
@@ -206,133 +244,179 @@ class ConclusaoPedidoController extends ChangeNotifier {
         int currentPage = 0;
         final pageController = PageController(initialPage: 0);
 
-        void scrollLeft() {
-          if (currentPage > 0) {
-            currentPage--;
-            pageController.animateToPage(currentPage,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut);
-          }
-        }
-
-        void scrollRight() {
-          if (currentPage < datas.length - 1) {
-            currentPage++;
-            pageController.animateToPage(currentPage,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut);
-          }
-        }
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              padding: const EdgeInsets.all(16),
-              height: 250,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Selecione a Data',
-                      style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      IconButton(
-                          onPressed: scrollLeft,
-                          icon: const Icon(Icons.arrow_back_ios)),
-                      Expanded(
-                        child: SizedBox(
-                          height: 100,
-                          child: PageView.builder(
-                            controller: pageController,
-                            itemCount: datas.length,
-                            onPageChanged: (index) => currentPage = index,
-                            itemBuilder: (_, index) {
-                              final date = datas[index];
-                              return GestureDetector(
-                                onTap: () => Navigator.pop(ctx, date),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueAccent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text('${date.day}/${date.month}',
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                          [
-                                            'Dom',
-                                            'Seg',
-                                            'Ter',
-                                            'Qua',
-                                            'Qui',
-                                            'Sex',
-                                            'Sáb'
-                                          ][date.weekday % 7],
-                                          style: const TextStyle(
-                                              color: Colors.white70)),
-                                    ],
-                                  ),
+        return StatefulBuilder(builder: (context, setState) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            height: 250,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Selecione a Data',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    IconButton(
+                        onPressed: () {
+                          if (currentPage > 0) {
+                            currentPage--;
+                            pageController.animateToPage(currentPage,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back_ios)),
+                    Expanded(
+                      child: SizedBox(
+                        height: 100,
+                        child: PageView.builder(
+                          controller: pageController,
+                          itemCount: datasFiltradas.length,
+                          onPageChanged: (index) => currentPage = index,
+                          itemBuilder: (_, index) {
+                            final date = datasFiltradas[index];
+                            return GestureDetector(
+                              onTap: () => Navigator.pop(ctx, date),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blueAccent,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              );
-                            },
-                          ),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('${date.day}/${date.month}',
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 18)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                        [
+                                          'Dom',
+                                          'Seg',
+                                          'Ter',
+                                          'Qua',
+                                          'Qui',
+                                          'Sex',
+                                          'Sáb'
+                                        ][date.weekday % 7],
+                                        style: const TextStyle(
+                                            color: Colors.white70)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      IconButton(
-                          onPressed: scrollRight,
-                          icon: const Icon(Icons.arrow_forward_ios)),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+                    ),
+                    IconButton(
+                        onPressed: () {
+                          if (currentPage < datasFiltradas.length - 1) {
+                            currentPage++;
+                            pageController.animateToPage(currentPage,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_forward_ios)),
+                  ],
+                ),
+              ],
+            ),
+          );
+        });
       },
     );
 
     if (selectedDate == null) return null;
 
-    // --- Seleção de hora ---
+    /// ------------------------------
+    ///     DEFINIÇÃO DE HORÁRIOS
+    /// ------------------------------
     final hoje = DateTime(now.year, now.month, now.day);
     final abertura = config.horaAbertura;
     final fechamento = config.horaFechamento;
 
-    DateTime startTime;
-    if (_tipoEntrega == TipoEntrega.entrega) {
-      if (DateTime(selectedDate.year, selectedDate.month, selectedDate.day) ==
-          hoje) {
-        startTime = now.add(const Duration(minutes: 30));
-        final aberturaHoje = DateTime(selectedDate.year, selectedDate.month,
-            selectedDate.day, abertura.hour, abertura.minute);
-        if (startTime.isBefore(aberturaHoje)) startTime = aberturaHoje;
-      } else {
-        startTime = DateTime(selectedDate.year, selectedDate.month,
-            selectedDate.day, abertura.hour, abertura.minute);
-      }
-    } else {
+    late DateTime startTime;
+    late DateTime endTime;
+
+    if (possuiFestividade) {
+      // FESTIVIDADE → abertura + 1h até fechamento – 30min
       startTime = DateTime(
-          selectedDate.year, selectedDate.month, selectedDate.day, 0, 0);
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        abertura.hour,
+        abertura.minute,
+      ).add(const Duration(hours: 1));
+
+      endTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        fechamento.hour,
+        fechamento.minute,
+      ).subtract(const Duration(minutes: 30));
+    } else {
+      // REGRAS NORMAIS (MANTIDAS)
+      if (_tipoEntrega == TipoEntrega.entrega) {
+        if (selectedDate.year == hoje.year &&
+            selectedDate.month == hoje.month &&
+            selectedDate.day == hoje.day) {
+          startTime = now.add(const Duration(minutes: 30));
+
+          final aberturaHoje = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            abertura.hour,
+            abertura.minute,
+          );
+
+          if (startTime.isBefore(aberturaHoje)) {
+            startTime = aberturaHoje;
+          }
+        } else {
+          startTime = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            abertura.hour,
+            abertura.minute,
+          );
+        }
+      } else {
+        startTime = now.add(const Duration(minutes: 20));
+
+        final aberturaHoje = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          abertura.hour,
+          abertura.minute,
+        );
+
+        if (startTime.isBefore(aberturaHoje)) {
+          startTime = aberturaHoje;
+        }
+      }
+
+      endTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        fechamento.hour,
+        fechamento.minute,
+      );
     }
 
-    final endTime = (_tipoEntrega == TipoEntrega.entrega)
-        ? DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
-        fechamento.hour, fechamento.minute)
-        .subtract(const Duration(minutes: 40))
-        : DateTime(
-        selectedDate.year, selectedDate.month, selectedDate.day, 23, 50);
-
+    /// ------------------------------
+    ///     GERAR LISTA DE HORAS
+    /// ------------------------------
     final horas = <TimeOfDay>[];
+
     for (int h = startTime.hour; h <= endTime.hour; h++) {
       for (int m = 0; m < 60; m += 10) {
         final dt = DateTime(
@@ -345,6 +429,9 @@ class ConclusaoPedidoController extends ChangeNotifier {
 
     if (horas.isEmpty) return null;
 
+    /// ------------------------------
+    ///     SELEÇÃO DE HORÁRIO
+    /// ------------------------------
     final selectedTime = await showModalBottomSheet<TimeOfDay>(
       context: context,
       isScrollControlled: true,
@@ -352,96 +439,95 @@ class ConclusaoPedidoController extends ChangeNotifier {
         int currentPage = 0;
         final pageController = PageController(initialPage: 0);
 
-        void scrollLeft() {
-          if (currentPage > 0) {
-            currentPage--;
-            pageController.animateToPage(currentPage,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut);
-          }
-        }
-
-        void scrollRight() {
-          if (currentPage < horas.length - 1) {
-            currentPage++;
-            pageController.animateToPage(currentPage,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut);
-          }
-        }
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              padding: const EdgeInsets.all(16),
-              height: 250,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Selecione o Horário',
-                      style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      IconButton(
-                          onPressed: scrollLeft,
-                          icon: const Icon(Icons.arrow_back_ios)),
-                      Expanded(
-                        child: SizedBox(
-                          height: 80,
-                          child: PageView.builder(
-                            controller: pageController,
-                            itemCount: horas.length,
-                            onPageChanged: (index) => currentPage = index,
-                            itemBuilder: (_, index) {
-                              final hora = horas[index];
-                              return GestureDetector(
-                                onTap: () => Navigator.pop(ctx, hora),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    '${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(
-                                        color: Colors.white, fontSize: 18),
-                                  ),
+        return StatefulBuilder(builder: (context, setState) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            height: 250,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Selecione o Horário',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    IconButton(
+                        onPressed: () {
+                          if (currentPage > 0) {
+                            currentPage--;
+                            pageController.animateToPage(currentPage,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back_ios)),
+                    Expanded(
+                      child: SizedBox(
+                        height: 80,
+                        child: PageView.builder(
+                          controller: pageController,
+                          itemCount: horas.length,
+                          onPageChanged: (index) => currentPage = index,
+                          itemBuilder: (_, index) {
+                            final hora = horas[index];
+                            return GestureDetector(
+                              onTap: () => Navigator.pop(ctx, hora),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              );
-                            },
-                          ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 18),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                      IconButton(
-                          onPressed: scrollRight,
-                          icon: const Icon(Icons.arrow_forward_ios)),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+                    ),
+                    IconButton(
+                        onPressed: () {
+                          if (currentPage < horas.length - 1) {
+                            currentPage++;
+                            pageController.animateToPage(currentPage,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_forward_ios)),
+                  ],
+                ),
+              ],
+            ),
+          );
+        });
       },
     );
 
     if (selectedTime == null) return null;
 
-    return DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
-        selectedTime.hour, selectedTime.minute);
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
   }
 
   /// Selecionar data e hora
   Future<void> selecionarDataHora(BuildContext context) async {
     final dataHora = await _mostrarModalSelecionarDataHora(context);
+
     if (dataHora != null) {
       _dataHoraEntrega = dataHora;
       notifyListeners();
+
       DialogHelper.showTemporaryToast(
         context,
         'Entrega: ${_dataHoraEntrega!.day}/${_dataHoraEntrega!.month} '
@@ -449,6 +535,7 @@ class ConclusaoPedidoController extends ChangeNotifier {
       );
     }
   }
+
 
   /// Widget profissional para selecionar Tipo de Entrega e Data/Hora
   Widget buildTipoEntrega(BuildContext context) {

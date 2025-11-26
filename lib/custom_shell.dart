@@ -22,7 +22,33 @@ class CustomShell extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.grey[50],
-      body: child,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // FAB maior na página do pedido
+          final double fabSize = isPedidoPage ? 85.0 : 70.0;
+          final double fabBottomOffset = isPedidoPage ? 20.0 : 10.0;
+
+          // Altura da BottomBar ajustada dinamicamente
+          final double bottomBarHeight =
+          hideNav ? 0.0 : (isPedidoPage ? 58.0 : 70.0);
+
+          // Padding inferior que se adapta ao FAB real
+          final double dynamicBottomPadding =
+          hideNav ? 0.0 : (fabSize / 2) - fabBottomOffset;
+
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: dynamicBottomPadding),
+            child: SafeArea(
+              top: false,
+              bottom: false,
+              child: child,
+            ),
+          );
+        },
+      ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       // 🔹 Botão central (pedido)

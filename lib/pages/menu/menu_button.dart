@@ -28,15 +28,21 @@ Widget buildMenuBotao(
       texto == 'Veja seus pedidos' && pedidoNotifier?.temAtualizacao == true;
 
   return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
+    padding: const EdgeInsets.symmetric(vertical: 6), // menos espaçamento
     child: GestureDetector(
       onTap: () async {
         if (isLogout) {
+          // 🔒 Chama diálogo que chama o AuthNotifier.logout()
           confirmarLogout(context);
-        } else if (rota != null) {
+          return;
+        }
+
+        if (rota != null) {
           context.push(rota);
-        } else if (texto == 'Veja seus pedidos') {
-          // 🔔 Se for o botão de pedidos, abre página e limpa alerta
+          return;
+        }
+
+        if (texto == 'Veja seus pedidos') {
           if (pedidoNotifier != null) pedidoNotifier.limparAtualizacao();
           context.push('/meuspedidos');
         }
@@ -47,7 +53,7 @@ Widget buildMenuBotao(
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: buttonWidth,
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isLogout
@@ -56,12 +62,12 @@ Widget buildMenuBotao(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: cor.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  color: cor.withOpacity(0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
@@ -69,38 +75,30 @@ Widget buildMenuBotao(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icone, color: Colors.white, size: 22),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Text(
                   texto,
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ],
             ),
           ),
 
-          // 🔴 Indicador de atualização (badge)
           if (temAtualizacao)
             Positioned(
-              right: 22,
-              top: 6,
+              right: 18,
+              top: 5,
               child: Container(
-                width: 14,
-                height: 14,
+                width: 12,
+                height: 12,
                 decoration: const BoxDecoration(
                   color: Colors.greenAccent,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green,
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -109,6 +107,7 @@ Widget buildMenuBotao(
     ),
   );
 }
+
 
 /// -----------------------------------------------------------
 /// 🔒 Diálogo de logout profissional

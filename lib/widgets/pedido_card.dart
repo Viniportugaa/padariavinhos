@@ -288,13 +288,7 @@ class _PedidoCardState extends State<PedidoCard>
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () {
-                          final atualizado =
-                          pedido.copyWith(status: "em preparo");
-
-                          context
-                              .read<PedidoProvider>()
-                              .colocarEmPreparo(atualizado);
-
+                          context.read<PedidoProvider>().colocarEmPreparo(pedido);
                           setState(() {});
                         },
                         label: const Text('Em Preparo'),

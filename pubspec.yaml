@@ -89,6 +89,8 @@ flutter:
   assets:
     - assets/
     - assets/LogoPadariaVinhosBranco.png
+    - assets/fotocardapiofestividadesfrente.jpeg
+    - assets/fotocardapiofestividadesverso.jpeg
     - assets/FotosdaPadaria/Baguetes de metro/
     - assets/FotosdaPadaria/Bolos/
     - assets/FotosdaPadaria/Doce/

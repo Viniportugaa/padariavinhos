@@ -166,12 +166,6 @@ class CarrinhoItemCard extends StatelessWidget {
                   label: const Text('Editar Obs'),
                 ),
                 const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () => EditarAcompanhamentosDialog.show(
-                      context, index, item, controller),
-                  icon: const Icon(Icons.fastfood),
-                  label: const Text('Editar Acomp.'),
-                ),
               ],
             ),
           ],

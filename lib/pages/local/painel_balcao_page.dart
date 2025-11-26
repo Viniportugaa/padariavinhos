@@ -1,10 +1,14 @@
+// ———————————— IMPORTS —————————————
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+
 import 'package:padariavinhos/models/pedido_local.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+
 import 'widget/pedido_sidebar_filter.dart';
+import 'widget/pedido_card_local.dart';
 
 class PainelBalcaoPage extends StatefulWidget {
   const PainelBalcaoPage({super.key});
@@ -15,111 +19,43 @@ class PainelBalcaoPage extends StatefulWidget {
 
 class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
   String? filtroStatus;
-  bool _sidebarAberta = true;
-  final BlueThermalPrinter _bluetooth = BlueThermalPrinter.instance;
-  bool _conectado = false;
+  bool filtroHoje = true;
+
+  bool sidebarAberta = true;
+  final BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
+  bool conectado = false;
 
   @override
   void initState() {
     super.initState();
-    _conectarImpressora();
+    _conectarPrinter();
   }
 
-  Future<void> _conectarImpressora() async {
+  // ————————— PRINTER —————————
+  Future<void> _conectarPrinter() async {
     try {
-      final bool? conectado = await _bluetooth.isConnected;
-      if (conectado == true) {
-        setState(() => _conectado = true);
+      final already = await bluetooth.isConnected;
+      if (already == true) {
+        setState(() => conectado = true);
         return;
       }
-
-      final List<BluetoothDevice> devices = await _bluetooth.getBondedDevices();
-      if (devices.isNotEmpty) {
-        await _bluetooth.connect(devices.first);
-        setState(() => _conectado = true);
-      } else {
-        debugPrint("Nenhum dispositivo emparelhado encontrado.");
+      final paired = await bluetooth.getBondedDevices();
+      if (paired.isNotEmpty) {
+        await bluetooth.connect(paired.first);
+        setState(() => conectado = true);
       }
-    } catch (e) {
-      debugPrint("Erro ao conectar à impressora: $e");
-    }
+    } catch (_) {}
   }
 
-  Future<void> _atualizarStatus(String id, String novoStatus) async {
-    await FirebaseFirestore.instance
-        .collection('pedidos_local')
-        .doc(id)
-        .update({'status': novoStatus});
-  }
-
-  /// 🔹 Imprime o pedido completo
-  Future<bool> _imprimirPedido(PedidoLocal pedido, List<ItemCarrinho> itens) async {
-    try {
-      if (!_conectado) {
-        await _conectarImpressora();
-        if (!_conectado) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Impressora não conectada.")),
-          );
-          return false;
-        }
-      }
-
-      final format = NumberFormat.simpleCurrency(locale: 'pt_BR');
-
-      _bluetooth.printCustom("PADARIA VINHOS", 3, 1);
-      _bluetooth.printCustom("-----------------------------", 1, 1);
-      _bluetooth.printCustom("MESA: ${pedido.mesa}", 2, 0);
-      _bluetooth.printCustom(
-        "PEDIDO N. ${pedido.posicao + 1}",
-        2,
-        0,
-      );
-      _bluetooth.printCustom(
-        "HORARIO: ${DateFormat('HH:mm').format(pedido.data)}",
-        1,
-        0,
-      );
-      _bluetooth.printCustom("-----------------------------", 1, 1);
-
-      // Itens
-      for (var item in itens) {
-        _bluetooth.printCustom(
-            "${item.quantidade.toInt()}x ${item.produto.nome}", 1, 0);
-
-        if (item.acompanhamentos != null && item.acompanhamentos!.isNotEmpty) {
-          for (var acomp in item.acompanhamentos!) {
-            _bluetooth.printCustom("   + ${acomp.nome}", 1, 0);
-          }
-        }
-
-        if (item.observacao != null && item.observacao!.isNotEmpty) {
-          _bluetooth.printCustom("   Obs: ${item.observacao}", 1, 0);
-        }
-
-        _bluetooth.printCustom("", 1, 0);
-      }
-
-      _bluetooth.printCustom("-----------------------------", 1, 1);
-      _bluetooth.printCustom("Obrigado pela preferência!", 1, 1);
-      _bluetooth.printNewLine();
-      _bluetooth.paperCut();
-
-      return true;
-    } catch (e) {
-      debugPrint("Erro ao imprimir pedido: $e");
-      return false;
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
+  // ————————————— STATUS COLOR —————————————
+  Color _statusColor(String s) {
+    switch (s) {
       case 'pendente':
-        return Colors.orange.shade600;
+        return Colors.orange.shade700;
       case 'em preparo':
-        return Colors.blueAccent.shade700;
+        return Colors.blue.shade700;
       case 'pronto':
-        return Colors.green.shade600;
+        return Colors.green.shade700;
       case 'entregue':
         return Colors.grey.shade600;
       case 'fechado':
@@ -129,8 +65,9 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
     }
   }
 
-  String _proximoStatus(String status) {
-    switch (status) {
+  // ———————————— PROXIMO STATUS ———————————————
+  String _proximo(String s) {
+    switch (s) {
       case 'pendente':
         return 'em preparo';
       case 'em preparo':
@@ -138,280 +75,157 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
       case 'pronto':
         return 'entregue';
       default:
-        return status;
+        return s;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    Query query = FirebaseFirestore.instance.collection('pedidos_local');
+  // ———————————— FIRESTORE QUERY ———————————————
+  Query _gerarQuery() {
+    Query q = FirebaseFirestore.instance
+        .collection('pedidos_local')
+        .orderBy('data', descending: true);
 
-    if (filtroStatus != null && filtroStatus!.isNotEmpty) {
-      query = query.where('status', isEqualTo: filtroStatus);
+    // Aplicar filtro HOJE
+    if (filtroHoje) {
+      final inicio = DateTime.now();
+      final diaIni = DateTime(inicio.year, inicio.month, inicio.day);
+      q = q.where(
+        'data',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(diaIni),
+      );
     }
 
-    query = query.orderBy('data', descending: true);
+    // STATUS
+    if (filtroStatus != null && filtroStatus!.isNotEmpty) {
+      q = q.where('status', isEqualTo: filtroStatus);
+    }
 
+    return q;
+  }
+
+  // ————————— IMPRIMIR ——————————
+  Future<bool> _imprimir(PedidoLocal pedido, List<ItemCarrinho> itens) async {
+    try {
+      if (!conectado) await _conectarPrinter();
+
+      bluetooth.printCustom("PADARIA VINHOS", 3, 1);
+      bluetooth.printCustom("MESA ${pedido.mesa}", 2, 1);
+      bluetooth.printCustom("PEDIDO ${pedido.posicao + 1}", 2, 1);
+      bluetooth.printCustom("---------------------", 1, 1);
+
+      for (var i in itens) {
+        bluetooth.printCustom("${i.quantidade.toInt()}x ${i.produto.nome}", 1, 0);
+      }
+
+      bluetooth.printCustom("---------------------", 1, 1);
+      bluetooth.printNewLine();
+      bluetooth.paperCut();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ———————————— BUILD ——————————————
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.brown.shade50,
       appBar: AppBar(
-        title: const Text("Painel do Balcão"),
-        centerTitle: true,
         backgroundColor: Colors.brown.shade400,
-        elevation: 2,
+        centerTitle: true,
+        title: const Text("Painel do Balcão"),
         actions: [
           IconButton(
             icon: Icon(
-              _sidebarAberta ? Icons.menu_open : Icons.menu,
+              sidebarAberta ? Icons.menu_open : Icons.menu,
               color: Colors.white,
             ),
-            onPressed: () => setState(() => _sidebarAberta = !_sidebarAberta),
-          ),
+            onPressed: () => setState(() => sidebarAberta = !sidebarAberta),
+          )
         ],
       ),
+
       body: Row(
         children: [
+          // ———————————————— SIDEBAR ————————————————————
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: _sidebarAberta ? 220 : 0,
-            child: _sidebarAberta
+            width: sidebarAberta ? 230 : 0,
+            child: sidebarAberta
                 ? PedidoSidebarFilter(
-              filtroSelecionado: filtroStatus,
-              onFiltroChanged: (novo) =>
-                  setState(() => filtroStatus = novo),
+              filtroStatus: filtroStatus,
+              filtroHoje: filtroHoje,
+              onStatusChange: (v) => setState(() => filtroStatus = v),
+              onHojeChange: (v) => setState(() => filtroHoje = v),
             )
                 : null,
           ),
+
+          // —————————————— CONTEÚDO ———————————————
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: query.snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+              stream: _gerarQuery().snapshots(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                final docs = snap.data!.docs;
+
+                if (docs.isEmpty) {
                   return const Center(
                     child: Text(
                       "Nenhum pedido encontrado.",
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: TextStyle(fontSize: 16),
                     ),
                   );
                 }
 
-                final pedidos = snapshot.data!.docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return PedidoLocal.fromMap(data, doc.id);
-                }).toList();
-
                 return ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: pedidos.length,
-                  itemBuilder: (context, index) {
-                    final pedido = pedidos[index];
+                  padding: const EdgeInsets.all(14),
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final pedido =
+                    PedidoLocal.fromMap(
+                      Map<String, dynamic>.from(docs[i].data() as Map),
+                      docs[i].id,
+                    );
 
                     return FutureBuilder<List<ItemCarrinho>>(
                       future: PedidoLocal.carregarItens(pedido.id),
-                      builder: (context, itensSnapshot) {
-                        final itens = itensSnapshot.data ?? [];
+                      builder: (context, itensSnap) {
+                        if (!itensSnap.hasData) {
+                          return const SizedBox(
+                            height: 80,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
 
-                        return Card(
-                          color: Colors.white,
-                          elevation: 3,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Mesa ${pedido.mesa} • Pedido ${pedido.posicao + 1}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 17,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: _statusColor(pedido.status),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        pedido.status.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormat('HH:mm').format(pedido.data),
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.black54),
-                                ),
-                                const Divider(height: 20),
+                        final itens = itensSnap.data!;
 
-                                if (itensSnapshot.connectionState ==
-                                    ConnectionState.waiting)
-                                  const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  )
-                                else
-                                  Column(
-                                    children: itens.map((item) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "${item.quantidade.toInt()}x ${item.produto.nome}",
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            if (item.observacao != null &&
-                                                item.observacao!.isNotEmpty)
-                                              Padding(
-                                                padding:
-                                                const EdgeInsets.only(left: 8, top: 2),
-                                                child: Text(
-                                                  "📝 ${item.observacao}",
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black54,
-                                                    fontStyle: FontStyle.italic,
-                                                  ),
-                                                ),
-                                              ),
-                                            if (item.acompanhamentos != null &&
-                                                item.acompanhamentos!.isNotEmpty)
-                                              Padding(
-                                                padding:
-                                                const EdgeInsets.only(left: 8, top: 4),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                                  children: [
-                                                    const Text(
-                                                      "Acompanhamentos:",
-                                                      style: TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.brown,
-                                                        fontWeight:
-                                                        FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    ...item.acompanhamentos!
-                                                        .map(
-                                                          (acomp) => Padding(
-                                                        padding:
-                                                        const EdgeInsets.only(left: 8, top: 1),
-                                                        child: Text(
-                                                          "• ${acomp.nome} (${NumberFormat.simpleCurrency(locale: 'pt_BR').format(acomp.preco)})",
-                                                          style:
-                                                          const TextStyle(fontSize: 13),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-
-                                const Divider(height: 20),
-                                Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Total: ${pedido.totalFormatado}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed: () async {
-                                        final novoStatus =
-                                        _proximoStatus(pedido.status);
-
-                                        if (pedido.status == 'pendente') {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(const SnackBar(
-                                            content:
-                                            Text("Imprimindo pedido..."),
-                                            duration:
-                                            Duration(milliseconds: 1500),
-                                          ));
-
-                                          final ok = await _imprimirPedido(
-                                              pedido, itens);
-                                          if (ok) {
-                                            await _atualizarStatus(
-                                                pedido.id, novoStatus);
-                                          } else {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(const SnackBar(
-                                              content: Text(
-                                                  "Falha ao imprimir. Tente novamente."),
-                                            ));
-                                          }
-                                        } else {
-                                          await _atualizarStatus(
-                                              pedido.id, novoStatus);
-                                        }
-                                      },
-                                      icon: Icon(
-                                        pedido.status == 'pendente'
-                                            ? Icons.print
-                                            : Icons.arrow_forward_rounded,
-                                      ),
-                                      label: Text(
-                                        pedido.status == 'pendente'
-                                            ? "Imprimir e Iniciar"
-                                            : _proximoStatus(pedido.status),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                        _statusColor(pedido.status),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 10),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                        return PedidoCard(
+                          pedido: pedido,
+                          itens: itens,
+                          statusColor: _statusColor(pedido.status),
+                          onImprimir: () async {
+                            final ok = await _imprimir(pedido, itens);
+                            if (ok) {
+                              await FirebaseFirestore.instance
+                                  .collection("pedidos_local")
+                                  .doc(pedido.id)
+                                  .update({
+                                "status": "em preparo",
+                              });
+                            }
+                          },
+                          onAvancar: () async {
+                            final novo = _proximo(pedido.status);
+                            await FirebaseFirestore.instance
+                                .collection("pedidos_local")
+                                .doc(pedido.id)
+                                .update({"status": novo});
+                          },
                         );
                       },
                     );
@@ -425,4 +239,3 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
     );
   }
 }
-

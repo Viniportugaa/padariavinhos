@@ -6,7 +6,6 @@ import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/carrinho_item_card.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/endereco_card.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/pagamento_selector.dart';
-import 'package:padariavinhos/helpers/preco_helper.dart';
 import 'package:padariavinhos/helpers/pedido_validador.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/pedido_minimo_widget.dart';
 import 'package:padariavinhos/pages/conclusao_pedido/widgets/cupom_input.dart';
@@ -90,19 +89,7 @@ class _ConclusaoPedidoPageBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Voltar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 16),
+
                 controller.buildTipoEntrega(context),
                 const SizedBox(height: 16),
                 EnderecoCard(

@@ -5,6 +5,7 @@ import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
+import 'package:go_router/go_router.dart';
 
 void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamento> acompanhamentosDisponiveis) {
   int quantidade = 1;
@@ -140,7 +141,52 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                         ),
                       ),
                       const SizedBox(height: 16),
-
+                      /// 🔥 Mostrar botão "Ver cardápio" SOMENTE para Festividades
+                      if (produto.category.toLowerCase() == 'festividade')
+                        Column(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push(
+                                  '/visualizar-cardapio',
+                                  extra: [
+                                    'assets/fotocardapiofestividadesfrente.jpeg',
+                                    'assets/fotocardapiofestividadesverso.jpeg',
+                                  ],
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFF8A65), Color(0xFFD84315)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    )
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Ver cardápio',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       // Observações
                       TextField(
                         decoration: InputDecoration(

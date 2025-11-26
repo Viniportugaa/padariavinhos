@@ -184,41 +184,6 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
                                 ],
                               ),
                             ),
-
-                            // Controles de quantidade
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline,
-                                      color: Colors.brown),
-                                  onPressed: () => context
-                                      .read<PedidoLocalProvider>()
-                                      .diminuirQuantidade(item),
-                                ),
-                                Text('${item.quantidade}',
-                                    style: const TextStyle(fontSize: 16)),
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline,
-                                      color: Colors.brown),
-                                  onPressed: () => context
-                                      .read<PedidoLocalProvider>()
-                                      .aumentarQuantidade(item),
-                                ),
-                              ],
-                            ),
-
-                            // Excluir item
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.redAccent),
-                              onPressed: () {
-                                context.read<PedidoLocalProvider>().removerItem(item);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                      Text('${item.produto.nome} removido do pedido.')),
-                                );
-                              },
-                            ),
                           ],
                         ),
 

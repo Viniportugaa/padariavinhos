@@ -8,10 +8,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:uuid/uuid.dart';
 import '../models/produto.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProductService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage  _storage   = FirebaseStorage.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<String> uploadImage(dynamic imageSource) async {
     try {
@@ -20,57 +21,65 @@ class ProductService {
 
       UploadTask uploadTask;
 
-      // 🧠 Função auxiliar para compressão universal
+      // 🔧 Função de compressão
       Future<Uint8List> _compressBytes(Uint8List bytes) async {
         try {
           final result = await FlutterImageCompress.compressWithList(
             bytes,
-            quality: 75, // ajuste entre 50–90 conforme desejar
-            minWidth: 800, // reduz grandes imagens mantendo nitidez
+            quality: 75,
+            minWidth: 800,
             minHeight: 800,
             format: CompressFormat.jpeg,
           );
           return Uint8List.fromList(result);
         } catch (e) {
           developer.log("Falha ao comprimir imagem: $e");
-          return bytes; // fallback: retorna original
+          return bytes;
         }
       }
 
+      // 🌐 WEB / PWA
       if (kIsWeb) {
-        // 🖼️ Web / PWA
         Uint8List bytes;
+
         if (imageSource is Uint8List) {
           bytes = imageSource;
         } else {
-          // Caso seja XFile, lê os bytes
-          bytes = await (imageSource as dynamic).readAsBytes();
+          bytes = await (imageSource as XFile).readAsBytes();
         }
 
-        // 🔄 Comprime antes do upload
         final compressed = await _compressBytes(bytes);
 
         uploadTask = ref.putData(
           compressed,
           SettableMetadata(contentType: 'image/jpeg'),
         );
-      } else {
-        // 📱 Android / iOS
-        if (imageSource is File) {
-          final bytes = await imageSource.readAsBytes();
-          final compressed = await _compressBytes(bytes);
-          uploadTask = ref.putData(
-            compressed,
-            SettableMetadata(contentType: 'image/jpeg'),
-          );
+      }
+
+      // 📱 ANDROID / iOS
+      else {
+        Uint8List bytes;
+
+        if (imageSource is XFile) {
+          bytes = await imageSource.readAsBytes();
+        } else if (imageSource is File) {
+          bytes = await imageSource.readAsBytes();
         } else {
-          throw Exception("Formato de imagem inválido para Mobile");
+          throw Exception("Formato inválido de imagem para mobile.");
         }
+
+        final compressed = await _compressBytes(bytes);
+
+        uploadTask = ref.putData(
+          compressed,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
       }
 
       final TaskSnapshot snapshot = await uploadTask.whenComplete(() {});
       final String downloadUrl = await snapshot.ref.getDownloadURL();
       return downloadUrl;
+
     } catch (e) {
       developer.log("Erro ao enviar imagem: $e");
       throw Exception("Erro ao fazer upload da imagem: $e");
@@ -79,27 +88,24 @@ class ProductService {
 
   Future<List<String>> uploadMultipleImages(List<dynamic> imageFiles) async {
     try {
-      // Executa todos os uploads em paralelo para otimizar tempo total
       final List<Future<String>> uploadTasks = imageFiles.map((file) async {
         try {
           return await uploadImage(file);
         } catch (e) {
-          developer.log('Erro ao enviar imagem: $e');
-          return ''; // retorna vazio se falhar (será filtrado depois)
+          developer.log("Erro ao enviar imagem: $e");
+          return '';
         }
       }).toList();
 
-      // Aguarda todos terminarem simultaneamente
       final List<String> urls = await Future.wait(uploadTasks);
 
-      // Remove URLs vazias (de uploads que falharam)
       return urls.where((url) => url.isNotEmpty).toList();
+
     } catch (e) {
-      developer.log('Erro geral ao enviar múltiplas imagens: $e');
-      throw Exception('Erro ao enviar múltiplas imagens: $e');
+      developer.log("Erro geral ao enviar múltiplas imagens: $e");
+      throw Exception("Erro ao enviar múltiplas imagens: $e");
     }
   }
-
 
   Future<void> saveProduct(Produto produto) async {
     try {
@@ -120,9 +126,7 @@ class ProductService {
 
   Future<void> updateProduct(Produto produto) async {
     try {
-      final docRef = _firestore.collection('produtos').doc(produto.id);
-
-      await docRef.update(produto.toMap());
+      await _firestore.collection('produtos').doc(produto.id).update(produto.toMap());
     } catch (e) {
       throw Exception("Erro ao atualizar produto: $e");
     }
@@ -133,10 +137,9 @@ class ProductService {
     required bool disponivel,
   }) async {
     try {
-      await _firestore
-          .collection('produtos')
-          .doc(produtoId)
-          .update({'disponivel': disponivel});
+      await _firestore.collection('produtos').doc(produtoId).update({
+        'disponivel': disponivel,
+      });
     } catch (e) {
       throw Exception("Erro ao alterar disponibilidade: $e");
     }
@@ -152,6 +155,7 @@ class ProductService {
       return snapshot.docs.map((doc) {
         return Produto.fromMap(doc.data(), doc.id);
       }).toList();
+
     } catch (e) {
       throw Exception("Erro ao buscar produtos: $e");
     }
