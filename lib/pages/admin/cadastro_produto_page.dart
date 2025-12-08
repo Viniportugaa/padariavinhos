@@ -30,7 +30,7 @@ class _CadastroProdutoPageState extends State<CadastroProdutoPage> {
 
   final List<String> _categorias = [
     'Festividade', 'Bolos', 'Doce', 'Lanches',
-    'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
+    'Pratos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos', 'Combo',
   ];
   String? _categoriaSelecionada;
 

@@ -17,7 +17,7 @@ class ProductsNotifier extends ChangeNotifier {
 
   final List<String> categoriasFixas = [
     'Pratos', 'Bolos', 'Doce', 'Lanches',
-    'Festividades', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
+    'Festividades', 'Paes', 'Refrigerante', 'Salgados', 'Sucos', 'Combo',
   ];
 
   /// Inicia a escuta de produtos disponíveis

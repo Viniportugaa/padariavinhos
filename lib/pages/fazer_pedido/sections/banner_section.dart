@@ -6,6 +6,8 @@ import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/pages/fazer_pedido/add_to_cart_sheet.dart';
 import 'package:collection/collection.dart';
 
+import 'package:padariavinhos/pages/fazer_pedido/sections/banner_fullscreen.dart'; // <-- ADICIONE ESTE IMPORT
+
 class BannerSection extends StatefulWidget {
   final List<Acompanhamento> acompanhamentos;
   const BannerSection({super.key, required this.acompanhamentos});
@@ -20,6 +22,10 @@ class _BannerSectionState extends State<BannerSection> {
   final double _minBannerHeight = 0;
   double _currentBannerHeight = 180;
 
+  String diaAtual = [
+    "dom", "seg", "ter", "qua", "qui", "sex", "sab"
+  ][DateTime.now().weekday % 7];
+
   @override
   void initState() {
     super.initState();
@@ -28,7 +34,8 @@ class _BannerSectionState extends State<BannerSection> {
 
   void _atualizarAlturaBanner() {
     final offset = _scrollController.offset;
-    final newHeight = (_maxBannerHeight - offset).clamp(_minBannerHeight, _maxBannerHeight);
+    final newHeight = (_maxBannerHeight - offset)
+        .clamp(_minBannerHeight, _maxBannerHeight);
     if (newHeight != _currentBannerHeight) {
       setState(() => _currentBannerHeight = newHeight);
     }
@@ -43,29 +50,20 @@ class _BannerSectionState extends State<BannerSection> {
 
   @override
   Widget build(BuildContext context) {
-    return BannerCarousel(onBannerTap: (produtoId) {
-        // Pega o ProductsNotifier
-        final productsNotifier = context.read<ProductsNotifier>();
-
-        // Busca o produto pelo ID
-        final produto = productsNotifier.produtos
-            .firstWhereOrNull((p) => p.id == produtoId);
-
-
-        if (produto != null) {
-          // Filtra os acompanhamentos do produto
-          final acompanhamentosDoProduto = widget.acompanhamentos
-              .where((a) => produto.acompanhamentosIds.contains(a.id))
-              .toList();
-
-
-          // Abre o modal de adicionar ao carrinho
-          showAddToCartSheet(context, produto, acompanhamentosDoProduto);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Produto não encontrado.')),
-          );
-        }
-      });
+    return BannerCarousel(
+      onBannerTap: (produtoId, imageUrl) async {
+        // Abre primeiro a página fullscreen do banner
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BannerFullScreenPage(
+              imageUrl: imageUrl,
+              produtoId: produtoId,
+              acompanhamentos: widget.acompanhamentos,
+            ),
+          ),
+        );
+      },
+    );
   }
 }

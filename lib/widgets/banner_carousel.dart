@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class BannerCarousel extends StatefulWidget {
-  final void Function(String produtoId) onBannerTap;
+  final void Function(String produtoId, String imageUrl) onBannerTap;
 
   const BannerCarousel({super.key, required this.onBannerTap});
 
@@ -18,7 +18,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
 
   void _scrollLeft() {
     _scrollController.animateTo(
-      _scrollController.offset - 250, // desliza 1 item (ajuste se quiser)
+      _scrollController.offset - 250,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
@@ -35,7 +35,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 200, // altura aumentada pra caber botões
+      height: 200,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -50,10 +50,27 @@ class _BannerCarouselState extends State<BannerCarousel> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final banners = snapshot.data!.docs
+              // ---------------------------
+              // 1) Transformar documentos
+              // ---------------------------
+              final todosBanners = snapshot.data!.docs
                   .map((doc) => BannerModel.fromMap(
                   doc.data()! as Map<String, dynamic>, doc.id))
                   .toList();
+
+              // ---------------------------
+              // 2) Determinar dia atual
+              // ---------------------------
+              const dias = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"];
+              final diaAtual = dias[DateTime.now().weekday - 1];
+
+              // ---------------------------
+              // 3) Filtrar banners do dia
+              // ---------------------------
+              final banners = todosBanners.where((b) {
+                if (b.diasVisiveis.isEmpty) return true;
+                return b.diasVisiveis.contains(diaAtual);
+              }).toList();
 
               if (banners.isEmpty) {
                 return const Center(child: Text('Nenhum banner disponível'));
@@ -71,7 +88,10 @@ class _BannerCarouselState extends State<BannerCarousel> {
                     banner: banner,
                     onTap: () {
                       if (banner.produtoId != null) {
-                        widget.onBannerTap(banner.produtoId!);
+                        widget.onBannerTap(
+                          banner.produtoId!,
+                          banner.imageUrl,
+                        );
                       }
                     },
                   );
@@ -79,24 +99,26 @@ class _BannerCarouselState extends State<BannerCarousel> {
               );
             },
           ),
-          // Botão Esquerda
+
+          // Botão esquerda
           Positioned(
             left: 0,
             child: IconButton(
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(Colors.black45),
-              ),
+                  backgroundColor:
+                  MaterialStateProperty.all(Colors.black45)),
               onPressed: _scrollLeft,
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
             ),
           ),
-          // Botão Direita
+
+          // Botão direita
           Positioned(
             right: 0,
             child: IconButton(
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(Colors.black45),
-              ),
+                  backgroundColor:
+                  MaterialStateProperty.all(Colors.black45)),
               onPressed: _scrollRight,
               icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
             ),
@@ -160,6 +182,7 @@ class _BannerItem extends StatelessWidget {
                 ),
               ),
             ),
+
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -170,6 +193,7 @@ class _BannerItem extends StatelessWidget {
                 ),
               ),
             ),
+
             if (banner.produtoId != null)
               Positioned(
                 bottom: 16,
@@ -214,14 +238,21 @@ class BannerModel {
   final String id;
   final String imageUrl;
   final String? produtoId;
+  final List<String> diasVisiveis;
 
-  BannerModel({required this.id, required this.imageUrl, this.produtoId});
+  BannerModel({
+    required this.id,
+    required this.imageUrl,
+    this.produtoId,
+    required this.diasVisiveis,
+  });
 
   factory BannerModel.fromMap(Map<String, dynamic> map, String id) {
     return BannerModel(
       id: id,
       imageUrl: map['imageUrl'] ?? '',
       produtoId: map['produtoId'],
+      diasVisiveis: List<String>.from(map['diasVisiveis'] ?? []),
     );
   }
 }

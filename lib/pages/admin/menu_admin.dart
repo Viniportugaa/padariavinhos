@@ -9,7 +9,7 @@ class MenuAdmin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final largura = MediaQuery.of(context).size.width;
-    final bool isTablet = largura > 600;
+    final bool isTablet = largura > 10000;
 
     return Scaffold(
       body: Container(
@@ -134,6 +134,10 @@ class MenuAdmin extends StatelessWidget {
                               Colors.purple, '/banneradmin',
                               largura: largura),
 
+                          buildMenuBotao(context, 'Avaliações', Icons.star,
+                              Colors.yellow, '/avaliacoesadmin',
+                              largura: largura),
+
                           buildMenuBotao(context, 'Local ADM', Icons.store,
                               Colors.indigo, '/local',
                               largura: largura),
@@ -144,10 +148,6 @@ class MenuAdmin extends StatelessWidget {
 
                           buildMenuBotao(context, 'Cupons', Icons.monetization_on,
                               Colors.amber, '/cupomadmin',
-                              largura: largura),
-
-                          buildMenuBotao(context, 'Categ.', Icons.category,
-                              Colors.indigoAccent, '/categoriadmin',
                               largura: largura),
 
                           buildMenuBotao(context, 'Relatórios', Icons.bar_chart,

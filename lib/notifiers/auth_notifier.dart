@@ -107,6 +107,8 @@ class AuthNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+
+
   Future<void> setUser(app_user.User user) async {
     _user = user;
     _role = user.role;

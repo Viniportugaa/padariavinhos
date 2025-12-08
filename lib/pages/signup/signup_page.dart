@@ -7,6 +7,7 @@ import 'package:padariavinhos/pages/signup/signup_notifier.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/helpers/phone_helper.dart';
 import 'package:padariavinhos/widgets/cep_text_field.dart';
+import 'package:padariavinhos/pages/back_button_route.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -127,138 +128,147 @@ class _SignUpPageState extends State<SignUpPage> {
     final notifier = context.watch<SignUpNotifier>();
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green, Colors.black, Colors.red],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 500),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
+      body: Stack(
+        children: [
+          // --- Seu conteúdo original ---
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green, Colors.black, Colors.red],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildInputField(controller: _nomeController, label: "Nome", icon: Icons.person),
-                    const SizedBox(height: 16),
-                    CepTextField(
-                      controller: _cepController,
-                      addressController: _enderecoController,
-                      onCepValidated: (valido) => setState(() => _cepValidado = valido),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      controller: _numeroEnderecoController,
-                      label: "Número",
-                      icon: Icons.format_list_numbered,
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      controller: _enderecoController,
-                      label: "Endereço",
-                      icon: Icons.home,
-                      readOnly: true,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      controller: _telefoneController,
-                      label: "Telefone",
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [PhoneInputFormatter(defaultCountryCode: 'BR')],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      controller: _emailController,
-                      label: "Email",
-                      icon: Icons.email,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      controller: _senhaController,
-                      label: "Senha",
-                      icon: Icons.lock,
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _tipoResidencia,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.apartment, color: Colors.white),
-                        labelText: 'Tipo de Residência',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'casa', child: Text('Casa', style: TextStyle(color: Colors.white))),
-                        DropdownMenuItem(value: 'apartamento', child: Text('Apartamento', style: TextStyle(color: Colors.white))),
-                      ],
-                      onChanged: (v) => setState(() => _tipoResidencia = v ?? 'casa'),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_tipoResidencia == 'apartamento')
-                      _buildInputField(
-                        controller: _ramalApartamentoController,
-                        label: "Ramal / Apartamento (opcional)",
-                        icon: Icons.tag,
-                        requiredField: false,
-                      ),
-                    const SizedBox(height: 24),
-                    Row(
+            ),
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Checkbox(
-                          value: _acceptedLGPD,
-                          onChanged: (value) => setState(() => _acceptedLGPD = value ?? false),
-                          activeColor: Colors.white,
-                          checkColor: Colors.white60,
+                        const SizedBox(height: 20),
+                        _buildInputField(controller: _nomeController, label: "Nome", icon: Icons.person),
+                        const SizedBox(height: 16),
+                        CepTextField(
+                          controller: _cepController,
+                          addressController: _enderecoController,
+                          onCepValidated: (valido) => setState(() => _cepValidado = valido),
                         ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => context.push('/lgpd'),
-                            child: const Text(
-                              "Aceito a política de privacidade (LGPD)",
-                              style: TextStyle(color: Colors.white, decoration: TextDecoration.underline),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _numeroEnderecoController,
+                          label: "Número",
+                          icon: Icons.format_list_numbered,
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _enderecoController,
+                          label: "Endereço",
+                          icon: Icons.home,
+                          readOnly: true,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _telefoneController,
+                          label: "Telefone",
+                          icon: Icons.phone,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [PhoneInputFormatter(defaultCountryCode: 'BR')],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _emailController,
+                          label: "Email",
+                          icon: Icons.email,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _senhaController,
+                          label: "Senha",
+                          icon: Icons.lock,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _tipoResidencia,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.apartment, color: Colors.white),
+                            labelText: 'Tipo de Residência',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'casa', child: Text('Casa', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'apartamento', child: Text('Apartamento', style: TextStyle(color: Colors.white))),
+                          ],
+                          onChanged: (v) => setState(() => _tipoResidencia = v ?? 'casa'),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_tipoResidencia == 'apartamento')
+                          _buildInputField(
+                            controller: _ramalApartamentoController,
+                            label: "Ramal / Apartamento (opcional)",
+                            icon: Icons.tag,
+                            requiredField: false,
+                          ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _acceptedLGPD,
+                              onChanged: (value) => setState(() => _acceptedLGPD = value ?? false),
+                              activeColor: Colors.white,
+                              checkColor: Colors.white60,
                             ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => context.push('/lgpd'),
+                                child: const Text(
+                                  "Aceito a política de privacidade (LGPD)",
+                                  style: TextStyle(color: Colors.white, decoration: TextDecoration.underline),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: (!notifier.isLoading && _cepValidado) ? _onSignUp : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: notifier.isLoading
+                              ? const CircularProgressIndicator(color: Colors.black45)
+                              : const Text(
+                            "Cadastrar",
+                            style: TextStyle(color: Colors.black45, fontWeight: FontWeight.bold, fontSize: 18),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: (!notifier.isLoading && _cepValidado) ? _onSignUp : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: notifier.isLoading
-                          ? const CircularProgressIndicator(color: Colors.black45)
-                          : const Text(
-                        "Cadastrar",
-                        style: TextStyle(color: Colors.black45, fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+
+          // --- Botão no topo direito ---
+          const BackButtonRoute(route: '/'),
+        ],
       ),
     );
+
   }
 }

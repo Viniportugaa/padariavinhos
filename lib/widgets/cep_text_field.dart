@@ -56,6 +56,10 @@ class _CepTextFieldState extends State<CepTextField> {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: widget.controller,
+      style: const TextStyle(
+        color: Colors.green,        // ← COR do texto digitado
+        fontSize: 16,
+      ),
       decoration: InputDecoration(
         labelText: "CEP",
         prefixIcon: const Icon(Icons.location_on),

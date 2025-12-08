@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:padariavinhos/models/pedido.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/widgets/pedido_total_row.dart';
+import 'package:padariavinhos/widgets/avaliacao_button.dart';
 
 class PedidoDetalhesSheet extends StatelessWidget {
   final Pedido pedido;
@@ -288,7 +289,6 @@ class PedidoDetalhesSheet extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Column(
                           children: [
-                            // subtotal (calcula a partir dos itens se quiser, aqui uso pedido.totalFinal - frete + ... mas exibimos campos que existem)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -382,6 +382,11 @@ class PedidoDetalhesSheet extends StatelessWidget {
                         ],
                       ],
                     ),
+
+                    const SizedBox(height: 16),
+
+                    // Aqui mostramos o botão de Avaliação (componente separado)
+                    AvaliacaoButton(pedido: pedido),
 
                     const SizedBox(height: 28),
                     Center(child: Text("Obrigado por comprar na Padaria Vinho's 🍞", style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontStyle: FontStyle.italic))),

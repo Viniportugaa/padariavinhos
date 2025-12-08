@@ -34,6 +34,8 @@ import 'package:padariavinhos/custom_shell.dart';
 import 'package:padariavinhos/pages/admin/cupons_admin_page.dart';
 import 'package:padariavinhos/pages/local/local_splash_screen.dart';
 import 'package:padariavinhos/pages/fazer_pedido/sections/visualizar_cardapio_page.dart';
+import 'package:padariavinhos/pages/admin/avaliacoes_page.dart';
+import 'package:padariavinhos/pages/contatos_page.dart';
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -144,9 +146,21 @@ GoRouter createRouter(AuthNotifier authNotifier) {
       ),
 
       GoRoute(
+        path: '/avaliacoesadmin',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: AvaliacoesPage(), state: state),
+      ),
+
+      GoRoute(
         path: '/local-splash',
         pageBuilder: (context, state) =>
             scaleTransitionPage(child: LocalSplashScreen(), state: state),
+      ),
+
+      GoRoute(
+        path: '/contato',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: ContatoPage(), state: state),
       ),
 
       GoRoute(

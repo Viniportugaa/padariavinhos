@@ -110,13 +110,22 @@ void showAddToCartSheet(BuildContext context, Produto produto, List<Acompanhamen
                       ),
 
                       if (produto.imageUrl.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            produto.imageUrl.first,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context); // fecha o bottom sheet antes de abrir a nova página
+                            context.push('/imagem-produto', extra: produto);
+                          },
+                          child: Hero(
+                            tag: produto.id, // MESMO TAG usado no ProductCardHorizontal
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                produto.imageUrl.first,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
                       // Nome do produto

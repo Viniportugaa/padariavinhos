@@ -9,6 +9,7 @@ import 'package:padariavinhos/helpers/phone_helper.dart';
 import 'package:padariavinhos/services/entrega_service.dart';
 import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class OpcoesPage extends StatefulWidget {
   @override
@@ -24,10 +25,11 @@ class _OpcoesPageState extends State<OpcoesPage> {
   final phoneController = TextEditingController();
   final cepController = TextEditingController();
   final ramalApartamentoController = TextEditingController();
+  bool userDataLoaded = false;
+  String userRole = '';
 
   String _tipoResidencia = 'casa';
 
-  final _cepFormatter = MaskedInputFormatter('#####-###');
 
   String emailAutenticado = '';
   late String uid;
@@ -73,7 +75,19 @@ class _OpcoesPageState extends State<OpcoesPage> {
       _tipoResidencia = (data['tipo_residencia'] ?? 'casa').toString();
       ramalApartamentoController.text = (data['ramalApartamento'] ?? '').toString();
 
+      userRole = data['role'] ?? 'user';
+      userDataLoaded = true;
+
       if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> reloadUserData() async {
+    try {
+      await loadUserData();
+      DialogHelper.showTemporaryToast(context, "Carregado!");
+    } catch (e) {
+      DialogHelper.showTemporaryToast(context, "Erro ao carregar: $e");
     }
   }
 
@@ -350,6 +364,40 @@ class _OpcoesPageState extends State<OpcoesPage> {
                       style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // --- RELOAD DOS DADOS ---
+                  ElevatedButton(
+                    onPressed: userDataLoaded ? reloadUserData : loadUserData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text(
+                      "Recarregar dados",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+// --- BOTÃO EXCLUSIVO PARA ADMIN ---
+                  if (userRole == "admin") ...[
+                    ElevatedButton(
+                      onPressed: () => context.go("/admin"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text(
+                        "Área Administrativa",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+
                 ],
               ),
             ),

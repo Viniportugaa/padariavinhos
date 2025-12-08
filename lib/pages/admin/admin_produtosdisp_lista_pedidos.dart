@@ -16,7 +16,7 @@ class _AdminProdutosPageState extends State<AdminProdutosPage> {
   final List<String> categoriasFixas = [
     'Todas',
     'Festividade', 'Pratos', 'Doce', 'Lanches',
-    'Bolos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos',
+    'Bolos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos', 'Combo',
   ];
 
   void _editarProduto(BuildContext context, Produto produto) {

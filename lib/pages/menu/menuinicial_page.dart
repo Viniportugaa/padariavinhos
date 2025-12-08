@@ -128,6 +128,14 @@ class _MenuInicialViewState extends State<_MenuInicialView> {
                   ),
                   buildMenuBotao(
                     context,
+                    'Duvidas / Contatos',
+                    Icons.chat,
+                    Colors.green,
+                    '/contato',
+                    largura: screenWidth,
+                  ),
+                  buildMenuBotao(
+                    context,
                     'SAIR',
                     Icons.logout,
                     Colors.grey[850]!,
