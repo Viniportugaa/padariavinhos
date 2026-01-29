@@ -5,7 +5,7 @@ import 'package:padariavinhos/models/acompanhamento.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
 import 'package:padariavinhos/helpers/preco_helper.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
 
 void showAddToCartSheetLocal(
     BuildContext context,
@@ -14,150 +14,108 @@ void showAddToCartSheetLocal(
     ) {
   int quantidade = 1;
   String observacoes = '';
-  final List<Acompanhamento> selecionados =
-  List.from(produto.acompanhamentosSelecionados ?? []);
+
+  // Inicializa 'selecionados' com as instâncias corretas a partir dos IDs do produto
+  final List<Acompanhamento> selecionados = [
+    for (final s in produto.acompanhamentosSelecionados ?? [])
+      if (s.id != null)
+        (acompanhamentosDisponiveis.firstWhere(
+              (a) => a.id == s.id,
+          orElse: () => s,
+        ))
+  ];
 
   final pedidoLocal = Provider.of<PedidoLocalProvider>(context, listen: false);
-  final mesaSelecionada = pedidoLocal.numeroMesa ?? '';
-  final posicaoSelecionada = pedidoLocal.posicaoMesa;
+  final mesaSelecionada = pedidoLocal.mesaAtual ?? '';
 
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.of(context).size.height * 0.95,
+    ),
     builder: (context) {
       return DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.8,
-        minChildSize: 0.4,
+        initialChildSize: 0.85,
+        minChildSize: 0.45,
         maxChildSize: 0.95,
         builder: (context, scrollController) {
           return StatefulBuilder(
             builder: (context, setState) {
-              final precoUnitario = PrecoHelper.calcularPrecoUnitario(
-                produto: produto,
-                selecionados: selecionados,
-              );
-
-              double precoAcompanhamentoCobrado(
-                  Acompanhamento a,
-                  List<Acompanhamento> selecionados,
-                  Produto produto) {
-                if (produto.category.toLowerCase() != 'pratos') return a.preco;
-                if (selecionados.length <= 3) return 0.0;
-
-                final numeroACobrar = selecionados.length - 3;
-                final precosOrdenados =
-                selecionados.map((e) => e.preco).toList()..sort();
-                final valoresACobrar =
-                precosOrdenados.take(numeroACobrar).toList();
-                final Map<double, int> contagemValores = {};
-                for (var v in valoresACobrar) {
-                  contagemValores[v] = (contagemValores[v] ?? 0) + 1;
+              // --- LÓGICA: retornar set de IDs que serão cobrados ---
+              Set<String> idsAcompanhamentosCobrados(
+                  List<Acompanhamento> selecionadosLocal, Produto produtoLocal) {
+                if (produtoLocal.category.toLowerCase() != 'pratos') {
+                  // Não é prato: cobra todos
+                  return selecionadosLocal
+                      .map((e) => e.id)
+                      .whereType<String>()
+                      .toSet();
                 }
-                if (contagemValores.containsKey(a.preco) &&
-                    contagemValores[a.preco]! > 0) {
-                  contagemValores[a.preco] = contagemValores[a.preco]! - 1;
-                  return a.preco;
-                }
-                return 0.0;
+
+                const int limiteGratis = 3;
+                if (selecionadosLocal.length <= limiteGratis) return <String>{};
+
+                final int quantidadeCobrada =
+                    selecionadosLocal.length - limiteGratis;
+
+                // Ordena por preço (menor -> maior)
+                final ordenados = List<Acompanhamento>.from(selecionadosLocal)
+                  ..sort((a, b) => a.preco.compareTo(b.preco));
+
+                // Pega os N menores preços
+                final cobrados = ordenados.take(quantidadeCobrada).toList();
+
+                return cobrados
+                    .map((a) => a.id)
+                    .whereType<String>()
+                    .toSet();
               }
 
-              Widget quantidadeSelector() => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: quantidade > 1
-                        ? () => setState(() => quantidade--)
-                        : null,
-                  ),
-                  Text(
-                    '$quantidade',
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () => setState(() => quantidade++),
-                  ),
-                ],
-              );
+              // recalcula ids cobrados sempre que build ocorre
+              final idsCobrados = idsAcompanhamentosCobrados(selecionados, produto);
 
-              Widget acompanhamentosSelector() {
-                if (acompanhamentosDisponiveis.isEmpty) {
-                  return const SizedBox.shrink();
+              // calcula preço unitário (base + adicionais cobrados)
+              double calcularPrecoTotal() {
+                double base = produto.preco;
+                double adicionais = 0.0;
+                for (final a in selecionados) {
+                  if (a.id != null && idsCobrados.contains(a.id)) {
+                    adicionais += a.preco;
+                  }
                 }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Acompanhamentos:',
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: acompanhamentosDisponiveis.map((a) {
-                        final isSelected = selecionados.contains(a);
-                        final precoExtra =
-                        precoAcompanhamentoCobrado(a, selecionados, produto);
-                        return AnimatedScale(
-                          scale: isSelected ? 1.1 : 1.0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              ChoiceChip(
-                                label: Text(a.nome),
-                                selected: isSelected,
-                                selectedColor: Colors.brown[200],
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      selecionados.add(a);
-                                    } else {
-                                      selecionados.remove(a);
-                                    }
-                                  });
-                                },
-                              ),
-                              if (precoExtra > 0 || isSelected)
-                                Positioned(
-                                  top: -8,
-                                  right: -8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: precoExtra > 0
-                                          ? Colors.red
-                                          : Colors.green,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      precoExtra > 0
-                                          ? '+R\$${precoExtra.toStringAsFixed(2)}'
-                                          : 'GRÁTIS',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                );
+                return base + adicionais;
               }
 
+              final precoUnitario = calcularPrecoTotal();
+
+              // resumo: grátis, pagos, total adicionais
+              Map<String, dynamic> resumoAcompanhamentos() {
+                int gratis = 0;
+                int pagos = 0;
+                double totalAdicionais = 0.0;
+
+                for (final a in selecionados) {
+                  if (a.id != null && idsCobrados.contains(a.id)) {
+                    pagos++;
+                    totalAdicionais += a.preco;
+                  } else {
+                    gratis++;
+                  }
+                }
+
+                return {
+                  'gratis': gratis,
+                  'pagos': pagos,
+                  'totalAdicionais': totalAdicionais,
+                };
+              }
+
+              final resumo = resumoAcompanhamentos();
+
+              // Widget UI
               return Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -165,9 +123,7 @@ void showAddToCartSheetLocal(
                   const BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: const [
                     BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 20,
-                        offset: Offset(0, 10)),
+                        color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))
                   ],
                 ),
                 padding: const EdgeInsets.all(16),
@@ -177,28 +133,61 @@ void showAddToCartSheetLocal(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // drag handle
                       Center(
                         child: Container(
                           width: 50,
                           height: 5,
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
                             color: Colors.grey[300],
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                       ),
+
+                      // IMAGEM COM HERO + TELA CHEIA
                       if (produto.imageUrl.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            produto.imageUrl.first,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
+                        GestureDetector(
+                          onTap: () {
+                            // abre fullscreen mantendo Hero; não fecha o sheet para manter UI consistente
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => Scaffold(
+                                  backgroundColor: Colors.black,
+                                  body: GestureDetector(
+                                    onTap: () => Navigator.of(context).pop(),
+                                    child: Center(
+                                      child: Hero(
+                                        tag: produto.id ?? produto.nome,
+                                        child: Image.network(
+                                          produto.imageUrl.first,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Hero(
+                            tag: produto.id ?? produto.nome,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                produto.imageUrl.first,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
-                      const SizedBox(height: 16),
+
+                      const SizedBox(height: 12),
+
+                      // NOME
                       Text(
                         produto.nome,
                         style: const TextStyle(
@@ -208,7 +197,9 @@ void showAddToCartSheetLocal(
                           color: Colors.brown,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
+
+                      // PREÇO
                       Text(
                         'R\$ ${precoUnitario.toStringAsFixed(2)}',
                         style: const TextStyle(
@@ -217,29 +208,28 @@ void showAddToCartSheetLocal(
                           color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
 
-                      if (mesaSelecionada.isNotEmpty &&
-                          posicaoSelecionada != null)
+                      // Mesa/Posição (se houver)
+                      if (mesaSelecionada.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 16),
+                              vertical: 8, horizontal: 12),
                           decoration: BoxDecoration(
                             color: Colors.brown[50],
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.brown.shade200),
                           ),
                           child: Text(
-                            'Mesa $mesaSelecionada | Posicao P${posicaoSelecionada + 1}',
+                            'Mesa $mesaSelecionada',
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown,
-                              fontSize: 14,
-                            ),
+                                fontWeight: FontWeight.bold, color: Colors.brown),
                           ),
                         ),
-                      const SizedBox(height: 16),
 
+                      const SizedBox(height: 12),
+
+                      // OBSERVAÇÕES
                       TextField(
                         decoration: InputDecoration(
                           labelText: 'Observações (opcional)',
@@ -247,72 +237,207 @@ void showAddToCartSheetLocal(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onChanged: (valor) => observacoes = valor,
                         maxLines: 2,
+                        onChanged: (v) => observacoes = v,
                       ),
-                      const SizedBox(height: 16),
-                      quantidadeSelector(),
-                      const SizedBox(height: 16),
-                      acompanhamentosSelector(),
-                      const SizedBox(height: 20),
 
-                      // 🔹 BOTÃO ATUALIZADO 🔹
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          if (mesaSelecionada.isEmpty ||
-                              posicaoSelecionada == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Mesa e posição não definidas. Volte à tela inicial.',
-                                ),
+                      const SizedBox(height: 14),
+
+                      // QUANTIDADE
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: quantidade > 1
+                                ? () => setState(() => quantidade--)
+                                : null,
+                          ),
+                          Text(
+                            '$quantidade',
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () => setState(() => quantidade++),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ACOMPANHAMENTOS
+                      if (acompanhamentosDisponiveis.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Acompanhamentos:',
+                              style:
+                              TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: acompanhamentosDisponiveis.map((a) {
+                                final isSelected = selecionados.any((s) => s.id == a.id);
+                                final ehCobrado = a.id != null && idsCobrados.contains(a.id);
+                                final label = ehCobrado
+                                    ? '${a.nome}'
+                                    : '${a.nome}';
+
+                                return AnimatedScale(
+                                  scale: isSelected ? 1.06 : 1.0,
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeInOut,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      FilterChip(
+                                        label: Text(label),
+                                        selected: isSelected,
+                                        selectedColor: Colors.deepOrange,
+                                        backgroundColor: Colors.grey[200],
+                                        labelStyle: TextStyle(
+                                          color: isSelected ? Colors.white : Colors.black87,
+                                        ),
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            if (selected) {
+                                              // adiciona instância correta por id (evita duplicados por referência)
+                                              final existente = acompanhamentosDisponiveis.firstWhere(
+                                                      (x) => x.id == a.id,
+                                                  orElse: () => a);
+                                              selecionados.add(existente);
+                                            } else {
+                                              selecionados.removeWhere((x) => x.id == a.id);
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      // badge de preço / grátis
+                                      Positioned(
+                                        top: -8,
+                                        right: -8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: ehCobrado ? Colors.red : Colors.green,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            ehCobrado
+                                                ? '+R\$${a.preco.toStringAsFixed(2)}'
+                                                : 'GRÁTIS',
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // aviso explicativo para pratos quando houver >3
+                            if (produto.category.toLowerCase() == 'pratos' &&
+                                selecionados.length > 3)
+                              Text(
+                                'A partir do 4º acompanhamento serão cobrados os ${selecionados.length - 3} menores selecionados.',
+                                style: TextStyle(color: Colors.red[700], fontSize: 12),
                               ),
-                            );
-                            return;
-                          }
+                          ],
+                        ),
 
-                          final novoItem = ItemCarrinho(
-                            produto: produto,
-                            quantidade: quantidade.toDouble(),
-                            observacao:
-                            'Mesa $mesaSelecionada | Posição P${posicaoSelecionada + 1} - $observacoes',
-                            acompanhamentos: List.from(selecionados),
-                            preco: precoUnitario,
-                          );
+                      const SizedBox(height: 18),
 
-                          try {
-                            // 🔹 Garante que o pedido existe
-                            await pedidoLocal.abrirOuRecuperarPedido();
-
-                            // 🔹 Salva o item direto no Firestore
-                            await pedidoLocal.adicionarItem(novoItem);
-
-                            Navigator.of(context).pop();
-                            DialogHelper.showTemporaryToast(
-                              context,
-                              'Adicionado: $quantidade x ${produto.nome} (Mesa $mesaSelecionada - P${posicaoSelecionada + 1})',
-                            );
-                          } catch (e) {
-                            debugPrint('❌ Erro ao adicionar item: $e');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Erro ao adicionar item: ${e.toString()}')),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.add_shopping_cart),
-                        label: const Text('Adicionar ao Pedido Local'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.brown[600],
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          textStyle: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
+                      // resumo (animado)
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: selecionados.isEmpty
+                            ? const SizedBox.shrink()
+                            : Column(
+                          key: ValueKey(selecionados.length),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Divider(color: Colors.grey[300]),
+                            const Text(
+                              'Resumo:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              '${resumo['gratis']} grátis • ${resumo['pagos']} pagos (+R\$ ${resumo['totalAdicionais'].toStringAsFixed(2)})',
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+
+                      // BOTÃO
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.brown[700],
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            textStyle: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
+                          label: const Text(
+                            'Adicionar ao Pedido Local',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          onPressed: () async {
+                            if (mesaSelecionada.isEmpty) {
+                              DialogHelper.showTemporaryToast(
+                                context,
+                                'Mesa não definida.\nSelecione uma mesa antes de adicionar itens.',
+                                segundos: 2,
+                              );
+                              return;
+                            }
+
+                            final precoUnitarioFinal = calcularPrecoTotal();
+
+                            final novoItem = ItemCarrinho(
+                              produto: produto,
+                              quantidade: quantidade.toDouble(),
+                              observacao: observacoes,
+                              acompanhamentos: List.from(selecionados),
+                              preco: precoUnitarioFinal,
+                            );
+
+
+                            try {
+                              await pedidoLocal.adicionarItem(novoItem);
+
+                              Navigator.of(context).pop();
+                              DialogHelper.showTemporaryToast(
+                                context,
+                                'Adicionado: $quantidade x ${produto.nome}',
+                              );
+                            } catch (e) {
+                              debugPrint('Erro ao adicionar item local: $e');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Erro: ${e.toString()}')),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+
+                      SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 12),
                     ],
                   ),
                 ),

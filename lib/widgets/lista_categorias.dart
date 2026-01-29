@@ -59,15 +59,15 @@ class ListaCategorias extends StatelessWidget {
   IconData _getIconForCategoria(String nome) {
     switch (nome.toLowerCase()) {
       case 'bolos': return Icons.cake;
-      case 'paes': return Icons.bakery_dining;
-      case 'sucos': return Icons.local_drink;
+      case 'paes': return Icons.breakfast_dining;
+      case 'sucos': return Icons.local_drink_outlined;
       case 'lanches': return Icons.fastfood;
-      case 'refrigerante': return Icons.local_cafe;
+      case 'refrigerante': return Icons.water_drop;
       case 'doce': return Icons.icecream;
       case 'salgados': return Icons.add_circle_outline;
-      case 'festividade': return Icons.celebration;
+      case 'Festividade': return Icons.celebration;
       case 'pratos': return Icons.restaurant;
-      default: return Icons.add_circle;
+      default: return Icons.add;
     }
   }
 }

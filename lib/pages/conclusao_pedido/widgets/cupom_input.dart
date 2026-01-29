@@ -20,8 +20,7 @@ class _CupomInputState extends State<CupomInput> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Provider.of<ConclusaoPedidoController>(context);
+  Widget build(BuildContext context) {    final controller = Provider.of<ConclusaoPedidoController>(context);
     final auth = Provider.of<AuthNotifier>(context);
     final user = auth.user;
 
@@ -41,7 +40,7 @@ class _CupomInputState extends State<CupomInput> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white70,
+              color: Colors.black,
             ),
           ),
           const SizedBox(height: 12),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
 
 class ResumoPedido extends StatelessWidget {
   final VoidCallback onRevisarPedido;

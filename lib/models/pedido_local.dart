@@ -25,11 +25,11 @@ class PedidoLocal {
     this.observacoes,
   });
 
-  /// 🔹 Retorna o total formatado como moeda
+  /// 🔹 Total formatado
   String get totalFormatado =>
       NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(total);
 
-  /// 🔹 Converte o pedido em Map para salvar no Firestore
+  /// 🔹 Converter para Firestore
   Map<String, dynamic> toMap() {
     return {
       'mesa': mesa,
@@ -43,7 +43,7 @@ class PedidoLocal {
     };
   }
 
-  /// 🔹 Cria o pedido a partir do documento principal (sem itens ainda)
+  /// 🔹 Criar pedido a partir do documento principal
   factory PedidoLocal.fromMap(Map<String, dynamic> map, String id) {
     return PedidoLocal(
       id: id,
@@ -54,11 +54,17 @@ class PedidoLocal {
       horaFormatada: map['horaFormatada'] ?? '',
       observacoes: map['observacoes'] ?? '',
       total: (map['total'] ?? 0).toDouble(),
-      itens: const [], // será carregado depois
+      itens: const [], // carregados depois
     );
   }
 
-  /// 🔹 Busca os itens da subcoleção 'itens' de um pedido
+  /// 🔹 Criar a partir do Firestore (DOC SNAPSHOT)
+  factory PedidoLocal.fromFirestore(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>;
+    return PedidoLocal.fromMap(map, doc.id);
+  }
+
+  /// 🔹 Carregar itens da subcoleção
   static Future<List<ItemCarrinho>> carregarItens(String pedidoId) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('pedidos_local')
@@ -66,8 +72,8 @@ class PedidoLocal {
         .collection('itens')
         .get();
 
-    return snapshot.docs.map((doc) {
-      return ItemCarrinho.fromMap(doc.data());
-    }).toList();
+    return snapshot.docs
+        .map((doc) => ItemCarrinho.fromMap(doc.data()))
+        .toList();
   }
 }

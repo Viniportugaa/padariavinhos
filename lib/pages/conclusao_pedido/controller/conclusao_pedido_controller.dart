@@ -624,7 +624,7 @@ class ConclusaoPedidoController extends ChangeNotifier {
                         'às ${controller.dataHoraEntrega!.hour.toString().padLeft(2, '0')}:'
                         '${controller.dataHoraEntrega!.minute.toString().padLeft(2, '0')}',
                     style:
-                    const TextStyle(color: Colors.white70, fontSize: 14),
+                    const TextStyle(color: Colors.black, fontSize: 14),
                   ),
                 ),
             ],

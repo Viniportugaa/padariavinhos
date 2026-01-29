@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/pages/admin/admin_produtosdisp_lista_pedidos.dart';
 import 'package:padariavinhos/pages/local/local_splash_screen.dart';
-import 'package:padariavinhos/pages/local/painel_balcao_page.dart';
+import 'package:padariavinhos/pages/local/admin/painel_balcao_page.dart';
 import 'package:padariavinhos/pages/local/fazer_pedido_local_page.dart';
 import 'package:provider/provider.dart';
 import 'package:padariavinhos/pages/admin/admin_lista_pedidos.dart';
@@ -36,6 +36,9 @@ import 'package:padariavinhos/pages/local/local_splash_screen.dart';
 import 'package:padariavinhos/pages/fazer_pedido/sections/visualizar_cardapio_page.dart';
 import 'package:padariavinhos/pages/admin/avaliacoes_page.dart';
 import 'package:padariavinhos/pages/contatos_page.dart';
+import 'package:padariavinhos/pages/local/admin/editar_pedido_local_page.dart';
+import 'package:padariavinhos/pages/local/admin/historico_pedidos_page.dart';
+
 
 GoRouter createRouter(AuthNotifier authNotifier) {
   return GoRouter(
@@ -139,6 +142,7 @@ GoRouter createRouter(AuthNotifier authNotifier) {
             scaleTransitionPage(child: AdminProdutosPage(), state: state),
       ),
 
+
       GoRoute(
         path: '/cupomadmin',
         pageBuilder: (context, state) =>
@@ -149,6 +153,14 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         path: '/avaliacoesadmin',
         pageBuilder: (context, state) =>
             scaleTransitionPage(child: AvaliacoesPage(), state: state),
+      ),
+
+      GoRoute(
+        path: '/editar_pedido_local/:pedidoId',
+        builder: (context, state) {
+          final pedidoId = state.pathParameters['pedidoId']!;
+          return EditarPedidoLocalPage(pedidoId: pedidoId);
+        },
       ),
 
       GoRoute(
@@ -174,6 +186,13 @@ GoRouter createRouter(AuthNotifier authNotifier) {
         pageBuilder: (context, state) =>
             scaleTransitionPage(child: FazerPedidoLocalPage(), state: state),
       ),
+
+      GoRoute(
+        path: '/historico_local',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(child: HistoricoPedidosPage(), state: state),
+      ),
+
 
       GoRoute(
         path: '/local',

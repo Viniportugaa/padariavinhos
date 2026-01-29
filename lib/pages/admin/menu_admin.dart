@@ -158,6 +158,15 @@ class MenuAdmin extends StatelessWidget {
                               Colors.deepOrange, '/config-abertura',
                               largura: largura),
 
+                          buildMenuBotao(context, 'cozinha', Icons.access_time,
+                              Colors.deepOrange, '/cozinha',
+                              largura: largura),
+
+                          buildMenuBotao(context, 'cozinha pedidos', Icons.access_time,
+                              Colors.deepOrange, '/cozinha/pedidos',
+                              largura: largura),
+
+
                           /// SAIR
                           buildMenuBotao(context, 'Sair', Icons.logout, Colors.grey,
                               null,

@@ -10,12 +10,12 @@ import 'package:padariavinhos/pages/fazer_pedido/sections/produtos_section.dart'
 import 'package:padariavinhos/pages/local/revisar_pedido_local_page.dart';
 import 'package:padariavinhos/pages/local/add_to_cart_local_sheet.dart';
 import 'package:padariavinhos/models/produto.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
 import 'produto_local_section.dart';
 import 'package:padariavinhos/pages/local/widget/resumo_pedido.dart';
 import 'package:padariavinhos/pages/local/widget/mesa_selector_button.dart';
 import 'package:padariavinhos/pages/local/widget/side_bar_filter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
 
 class FazerPedidoLocalPage extends StatefulWidget {
   const FazerPedidoLocalPage({super.key});
@@ -35,7 +35,17 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
   @override
   void initState() {
     super.initState();
-    _inicializarPagina();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 🔥 INICIA O CATÁLOGO (ESSENCIAL)
+      context.read<ProductsNotifier>().startListening();
+
+      // 🔥 INICIALIZA PEDIDO LOCAL
+      await context.read<PedidoLocalProvider>().inicializar();
+
+      // 🔥 ACOMPANHAMENTOS
+      await _carregarAcompanhamentos();
+    });
   }
 
   void _mostrarItensPedido(PedidoLocalProvider pedidoProvider) {
@@ -188,20 +198,6 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
     );
   }
 
-  Future<void> _inicializarPagina() async {
-    final config = context.read<ConfigNotifier>();
-    final produtos = context.read<ProductsNotifier>();
-    final pedidoProvider = context.read<PedidoLocalProvider>();
-
-    config.startListening();
-    produtos.startListening();
-
-    // 🔹 Garante que mesa e pedido ativo estão sincronizados
-    await pedidoProvider.abrirOuRecuperarPedido();
-    await _carregarAcompanhamentos();
-
-    setState(() => _carregandoPedido = false);
-  }
 
   Future<void> _carregarAcompanhamentos() async {
     try {
@@ -221,8 +217,7 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
 
   void _prosseguirParaRevisao() {
     final pedidoProvider = context.read<PedidoLocalProvider>();
-    final numeroMesa = pedidoProvider.numeroMesa;
-    final posicaoMesa = pedidoProvider.posicaoMesa;
+    final numeroMesa = pedidoProvider.mesaAtual;
 
     if (pedidoProvider.itens.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,7 +226,7 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
       return;
     }
 
-    if (numeroMesa == null || posicaoMesa == null) {
+    if (numeroMesa == null ) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Informe a mesa e a posição do cliente.')),
       );
@@ -243,7 +238,6 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
       MaterialPageRoute(
         builder: (_) => RevisarPedidoLocalPage(
           numeroMesa: numeroMesa,
-          posicaoMesa: posicaoMesa,
         ),
       ),
     );
@@ -256,14 +250,11 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
         .map((p) => p.category.isNotEmpty ? p.category : 'Outros')
         .toSet()
         .toList();
+    final pedido = context.watch<PedidoLocalProvider>();
 
-    final pedidoProvider = context.watch<PedidoLocalProvider>();
-
-    if (_carregandoPedido) {
+    if (!pedido.carregado) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.brown),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -285,6 +276,39 @@ class _FazerPedidoLocalPageState extends State<FazerPedidoLocalPage> {
           ),
           actions: [
             // Botão filtro
+            IconButton(
+              icon: const Icon(Icons.notifications_active_outlined, color: Colors.white),
+              tooltip: "Chamar Garçom",
+              onPressed: () async {
+                final pedidoProvider = context.read<PedidoLocalProvider>();
+                final mesa = pedidoProvider.mesaAtual;
+
+                if (mesa == null || mesa.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Selecione a mesa antes de chamar o garçom."),
+                    ),
+                  );
+                  return;
+                }
+
+                await FirebaseFirestore.instance
+                    .collection("notificacoes_garcom")
+                    .add({
+                  "mesa": mesa,
+                  "horario": Timestamp.now(),
+                  "lido": false,
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Garçom chamado para a mesa $mesa."),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+
             IconButton(
               icon: const Icon(Icons.filter_list, color: Colors.white),
               onPressed: () => setState(() => _sidebarAberta = !_sidebarAberta),

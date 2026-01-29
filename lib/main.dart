@@ -21,7 +21,8 @@ import 'notifiers/config_notifier.dart';
 import 'router.dart';
 import 'package:padariavinhos/provider/pedido_provider.dart';
 import 'package:padariavinhos/provider/favoritos_provider.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedidos_balcao_provider.dart';
 
 /// Background handler (quando app está em segundo plano / terminated)
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -105,6 +106,8 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ConfigNotifier()..startListening()),
         ChangeNotifierProvider(create: (_) => PedidoProvider()),
         ChangeNotifierProvider(create: (_) => FavoritosProvider()),
+        ChangeNotifierProvider(create: (_) => PedidosBalcaoProvider()),
+
       ],
       child: const MyApp(),
     ),

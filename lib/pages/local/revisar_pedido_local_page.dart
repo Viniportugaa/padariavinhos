@@ -3,16 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/pedido_local.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
 
 class RevisarPedidoLocalPage extends StatefulWidget {
   final String numeroMesa;
-  final int posicaoMesa;
 
   const RevisarPedidoLocalPage({
     super.key,
     required this.numeroMesa,
-    required this.posicaoMesa,
   });
 
   @override
@@ -122,7 +120,7 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Mesa ${widget.numeroMesa}  |  P${widget.posicaoMesa + 1}',
+                      'Mesa ${widget.numeroMesa}',
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w700),
                     ),
@@ -303,6 +301,7 @@ class _RevisarPedidoLocalPageState extends State<RevisarPedidoLocalPage> {
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.brown[700],
+            foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),

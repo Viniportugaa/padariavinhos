@@ -1,14 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:padariavinhos/pages/local/provider/pedido_local_provider.dart';
+import 'package:padariavinhos/provider/provider_local/pedido_local_provider.dart';
 
 class MesaSelectorButton extends StatelessWidget {
   const MesaSelectorButton({super.key});
 
   void _abrirSelecionarMesaSheet(BuildContext context) {
     final pedidoProvider = context.read<PedidoLocalProvider>();
-    String? mesaSelecionada = pedidoProvider.numeroMesa;
-    int? posicaoSelecionada = pedidoProvider.posicaoMesa;
+    String? mesaSelecionada = pedidoProvider.mesaAtual;
+
+    Future<void> pedirSenhaParaTrocarMesa(String novaMesa) async {
+      final controller = TextEditingController();
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Alterar Mesa"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Digite a senha para mudar a mesa:"),
+                TextField(
+                  controller: controller,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    hintText: "Senha",
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancelar"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (controller.text == "123456") {
+                    Navigator.pop(context, true);
+                  } else {
+                    Navigator.pop(context, false);
+                  }
+                },
+                child: const Text("Confirmar"),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (result == true) {
+        pedidoProvider.definirMesa(novaMesa);
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Senha incorreta"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
 
     showModalBottomSheet(
       context: context,
@@ -18,14 +70,12 @@ class MesaSelectorButton extends StatelessWidget {
         return StatefulBuilder(builder: (context, setState) {
           final List<String> mesas = List.generate(21, (i) => '${i + 1}');
           const double mesaSize = 60;
-          const double cadeiraSize = 28;
 
           return Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
@@ -65,7 +115,6 @@ class MesaSelectorButton extends StatelessWidget {
                         onTap: () {
                           setState(() {
                             mesaSelecionada = mesa;
-                            posicaoSelecionada = null;
                           });
                         },
                         child: AnimatedContainer(
@@ -73,19 +122,9 @@ class MesaSelectorButton extends StatelessWidget {
                           width: mesaSize,
                           height: mesaSize,
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.brown[400]
-                                : Colors.brown[100],
+                            color:
+                            isSelected ? Colors.brown[400] : Colors.brown[100],
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: isSelected
-                                ? [
-                              BoxShadow(
-                                color: Colors.brown.withOpacity(0.4),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
-                                : [],
                             border: Border.all(
                               color: isSelected
                                   ? Colors.brown.shade700
@@ -111,147 +150,39 @@ class MesaSelectorButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Posições P1 / P2
-                  if (mesaSelecionada != null)
-                    Column(
-                      children: [
-                        const Text(
-                          'Selecione a Posição',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.brown,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: mesaSize,
-                              height: mesaSize,
-                              decoration: BoxDecoration(
-                                color: Colors.brown[300],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Mesa $mesaSelecionada',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: -cadeiraSize / 2,
-                              child: GestureDetector(
-                                onTap: () =>
-                                    setState(() => posicaoSelecionada = 0),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: cadeiraSize,
-                                  height: cadeiraSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: posicaoSelecionada == 0
-                                        ? Colors.brown[400]
-                                        : Colors.brown[100],
-                                    border: Border.all(
-                                      color: posicaoSelecionada == 0
-                                          ? Colors.brown.shade700
-                                          : Colors.brown.shade300,
-                                    ),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'P1',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -cadeiraSize / 2,
-                              child: GestureDetector(
-                                onTap: () =>
-                                    setState(() => posicaoSelecionada = 1),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: cadeiraSize,
-                                  height: cadeiraSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: posicaoSelecionada == 1
-                                        ? Colors.brown[400]
-                                        : Colors.brown[100],
-                                    border: Border.all(
-                                      color: posicaoSelecionada == 1
-                                          ? Colors.brown.shade700
-                                          : Colors.brown.shade300,
-                                    ),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'P2',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-
-                  // Botão Confirmar
                   ElevatedButton.icon(
-                    onPressed: mesaSelecionada == null ||
-                        posicaoSelecionada == null
+                    onPressed: mesaSelecionada == null
                         ? null
-                        : () {
-                      pedidoProvider.definirMesa(
-                        mesaSelecionada!,
-                        posicaoSelecionada!,
-                      );
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: Colors.brown[600],
-                          content: Text(
-                            'Mesa $mesaSelecionada (P${posicaoSelecionada! + 1}) selecionada!',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                        : () async {
+                      final mesaAtual = pedidoProvider.mesaAtual;
+
+                      // Se não existe mesa → define direto
+                      if (mesaAtual == null) {
+                        pedidoProvider.definirMesa(mesaSelecionada!);
+                        Navigator.pop(context);
+                        return;
+                      }
+
+                      // Se é a mesma mesa → nada muda
+                      if (mesaAtual == mesaSelecionada) {
+                        Navigator.pop(context);
+                        return;
+                      }
+
+                      // Se tentar mudar → pedir senha
+                      await pedirSenhaParaTrocarMesa(mesaSelecionada!);
                     },
                     icon: const Icon(Icons.check_circle_outline),
                     label: const Text('Confirmar'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.brown[600],
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 20),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -264,8 +195,7 @@ class MesaSelectorButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pedido = context.watch<PedidoLocalProvider>();
-    final mesa = pedido.numeroMesa;
-    final pos = pedido.posicaoMesa;
+    final mesa = pedido.mesaAtual;
 
     return GestureDetector(
       onTap: () => _abrirSelecionarMesaSheet(context),
@@ -281,9 +211,7 @@ class MesaSelectorButton extends StatelessWidget {
             const Icon(Icons.table_bar, color: Colors.white, size: 20),
             const SizedBox(width: 6),
             Text(
-              mesa != null
-                  ? 'Mesa $mesa • P${(pos ?? 0) + 1}'
-                  : 'Selecionar Mesa',
+              mesa != null ? "Mesa $mesa" : "Selecionar Mesa",
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

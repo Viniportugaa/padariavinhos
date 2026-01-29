@@ -23,47 +23,29 @@ class ProdutosLocalSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = context.select<AuthNotifier, bool>((a) => a.isOnline);
+
+    if (!isOnline) {
+      return const Center(
+        child: Text(
+          'Sem conexão. Catálogo indisponível.',
+          style: TextStyle(color: Colors.brown),
+        ),
+      );
+    }
+
     return Consumer2<ProductsNotifier, FavoritosProvider>(
       builder: (context, productsNotifier, favoritosProvider, _) {
-        final isOnline = Provider.of<AuthNotifier>(context).isOnline;
-
-        if (!isOnline) {
-          return const Center(
-            child: Text(
-              'Sem conexão. Catálogo indisponível.',
-              style: TextStyle(color: Colors.brown),
-            ),
-          );
-        }
-
         if (productsNotifier.loading) {
           return const Center(
             child: CircularProgressIndicator(color: Colors.brown),
           );
         }
 
-        // 🔹 Aplica filtros
-        List<Produto> produtosFiltrados =
-        productsNotifier.produtosFiltrados(favoritosProvider)
-            .where((p) => p.disponivelLocal)
-            .toList();
-
-        if (filtroNome.isNotEmpty) {
-          final search = filtroNome.toLowerCase();
-          produtosFiltrados = produtosFiltrados.where((produto) {
-            return produto.nome.toLowerCase().contains(search) ||
-                (produto.descricao != null &&
-                    produto.descricao!.toLowerCase().contains(search));
-          }).toList();
-        }
-
-        if (filtroCategoria != null && filtroCategoria!.isNotEmpty) {
-          produtosFiltrados = produtosFiltrados.where((produto) {
-            final categoriaProduto =
-            produto.category.isNotEmpty ? produto.category : 'Outros';
-            return categoriaProduto == filtroCategoria;
-          }).toList();
-        }
+        final produtosFiltrados = _filtrarProdutos(
+          productsNotifier: productsNotifier,
+          favoritosProvider: favoritosProvider,
+        );
 
         if (produtosFiltrados.isEmpty) {
           return const Center(
@@ -74,125 +56,181 @@ class ProdutosLocalSection extends StatelessWidget {
           );
         }
 
-        // 🔹 Agrupa por categoria
-        final Map<String, List<Produto>> produtosPorCategoria = {};
-        for (var produto in produtosFiltrados) {
-          final categoria =
-          produto.category.isNotEmpty ? produto.category : 'Outros';
-          produtosPorCategoria.putIfAbsent(categoria, () => []).add(produto);
-        }
+        final produtosPorCategoria = _agruparPorCategoria(produtosFiltrados);
+        final categorias = produtosPorCategoria.keys.toList();
 
-        final categoriasOrdenadas = produtosPorCategoria.keys.toList();
-
-        // 🔹 Lista principal
         return ListView.builder(
           controller: scrollController,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          itemCount: categoriasOrdenadas.length,
+          itemCount: categorias.length,
           itemBuilder: (context, index) {
-            final categoria = categoriasOrdenadas[index];
-            final produtosDaCategoria = produtosPorCategoria[categoria]!;
+            final categoria = categorias[index];
+            final produtos = produtosPorCategoria[categoria]!;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🔸 Título da categoria
-                Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.brown[400],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        categoria,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontFamily: 'Pacifico',
-                          fontWeight: FontWeight.bold,
-                          color: Colors.brown,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black12,
-                              blurRadius: 2,
-                              offset: Offset(1, 1),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                // 🔸 Grid de produtos responsivo
-                Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // 🔹 Define colunas dinamicamente conforme a largura
-                      int crossAxisCount;
-                      double aspectRatio;
-
-                      if (constraints.maxWidth >= 1400) {
-                        crossAxisCount = 6;
-                        aspectRatio = 0.5;
-                      } else if (constraints.maxWidth >= 1100) {
-                        crossAxisCount = 5;
-                        aspectRatio = 1.0;
-                      } else if (constraints.maxWidth >= 800) {
-                        crossAxisCount = 4;
-                        aspectRatio = 0.5;
-                      } else if (constraints.maxWidth >= 600) {
-                        crossAxisCount = 4;
-                        aspectRatio = 0.5;
-                      } else {
-                        crossAxisCount = 1;
-                        aspectRatio = 1.0;
-                      }
-
-                      return GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: produtosDaCategoria.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          childAspectRatio: aspectRatio,
-                        ),
-                        itemBuilder: (context, i) {
-                          final produto = produtosDaCategoria[i];
-                          return AspectRatio(
-                            aspectRatio: 1,
-                            child: ProductCardQuadrado(
-                              key: ValueKey(produto.id),
-                              produto: produto,
-                              acompanhamentos: acompanhamentos
-                                  .where((a) =>
-                                  produto.acompanhamentosIds.contains(a.id))
-                                  .toList(),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
+            return _CategoriaSection(
+              categoria: categoria,
+              produtos: produtos,
+              acompanhamentos: acompanhamentos,
             );
           },
         );
       },
     );
+  }
+
+  // ===========================================================================
+  // 🔹 FILTROS
+  // ===========================================================================
+  List<Produto> _filtrarProdutos({
+    required ProductsNotifier productsNotifier,
+    required FavoritosProvider favoritosProvider,
+  }) {
+    var lista = productsNotifier
+        .produtosFiltrados(favoritosProvider)
+        .where((p) => p.disponivelLocal)
+        .toList();
+
+    if (filtroNome.isNotEmpty) {
+      final search = filtroNome.toLowerCase();
+      lista = lista.where((p) {
+        return p.nome.toLowerCase().contains(search) ||
+            (p.descricao?.toLowerCase().contains(search) ?? false);
+      }).toList();
+    }
+
+    if (filtroCategoria != null && filtroCategoria!.isNotEmpty) {
+      lista = lista.where((p) {
+        final categoria = p.category.isNotEmpty ? p.category : 'Outros';
+        return categoria == filtroCategoria;
+      }).toList();
+    }
+
+    return lista;
+  }
+
+  // ===========================================================================
+  // 🔹 AGRUPAMENTO
+  // ===========================================================================
+  Map<String, List<Produto>> _agruparPorCategoria(List<Produto> produtos) {
+    final Map<String, List<Produto>> mapa = {};
+
+    for (final produto in produtos) {
+      final categoria =
+      produto.category.isNotEmpty ? produto.category : 'Outros';
+      mapa.putIfAbsent(categoria, () => []).add(produto);
+    }
+
+    return mapa;
+  }
+}
+class _CategoriaSection extends StatelessWidget {
+  final String categoria;
+  final List<Produto> produtos;
+  final List<Acompanhamento> acompanhamentos;
+
+  const _CategoriaSection({
+    required this.categoria,
+    required this.produtos,
+    required this.acompanhamentos,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _CategoriaTitulo(categoria: categoria),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = _GridLayout.fromWidth(constraints.maxWidth);
+
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: produtos.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: layout.colunas,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: layout.aspectRatio,
+                ),
+                itemBuilder: (context, index) {
+                  final produto = produtos[index];
+
+                  final acompDoProduto = acompanhamentos
+                      .where((a) =>
+                      produto.acompanhamentosIds.contains(a.id))
+                      .toList();
+
+                  return ProductCardQuadrado(
+                    key: ValueKey(produto.id),
+                    produto: produto,
+                    acompanhamentos: acompDoProduto,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+class _CategoriaTitulo extends StatelessWidget {
+  final String categoria;
+
+  const _CategoriaTitulo({required this.categoria});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.brown[400],
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            categoria,
+            style: const TextStyle(
+              fontSize: 20,
+              fontFamily: 'Pacifico',
+              fontWeight: FontWeight.bold,
+              color: Colors.brown,
+              shadows: [
+                Shadow(
+                  color: Colors.black12,
+                  blurRadius: 2,
+                  offset: Offset(1, 1),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _GridLayout {
+  final int colunas;
+  final double aspectRatio;
+
+  const _GridLayout(this.colunas, this.aspectRatio);
+
+  factory _GridLayout.fromWidth(double width) {
+    if (width >= 1400) return const _GridLayout(6, 0.5);
+    if (width >= 1100) return const _GridLayout(5, 1.0);
+    if (width >= 800) return const _GridLayout(4, 0.5);
+    if (width >= 600) return const _GridLayout(4, 0.5);
+    return const _GridLayout(1, 1.0);
   }
 }
