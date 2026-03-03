@@ -27,7 +27,7 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
   @override
   void initState() {
     super.initState();
-    context.read<PedidosBalcaoProvider>().startListeningPedidosHoje();
+    context.read<PedidosBalcaoProvider>().listenPedidosHoje();
     _conectarPrinter();
   }
 
@@ -191,7 +191,9 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (provider.pedidos.isEmpty) {
+                final pedidos = provider.pedidosAtivos;
+
+                if (pedidos.isEmpty) {
                   return const Center(
                     child: Text('Nenhum pedido hoje'),
                   );
@@ -199,12 +201,13 @@ class _PainelBalcaoPageState extends State<PainelBalcaoPage> {
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(14),
-                  itemCount: provider.pedidos.length,
+                  itemCount: pedidos.length,
                   itemBuilder: (context, index) {
-                    final pedido = provider.pedidos[index];
+                    final pedido = pedidos[index];
 
-                    return FutureBuilder<List<ItemCarrinho>>(
-                      future: provider.carregarItens(pedido.id),
+                    return StreamBuilder<List<ItemCarrinho>>(
+                      stream: provider.streamItensPedido(pedido.id),
+                      key: ValueKey('${pedido.id}_${pedido.status}_${pedido.total}'),
                       builder: (context, snap) {
                         if (!snap.hasData) {
                           return const Padding(

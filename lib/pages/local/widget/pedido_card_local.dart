@@ -1,14 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:async';
-import 'package:padariavinhos/provider/provider_local/pedidos_balcao_provider.dart';
 import 'package:padariavinhos/models/pedido_local.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 
 class PedidoCardLocal extends StatefulWidget {
   final PedidoLocal pedido;
   final List<ItemCarrinho> itens;
-
   final VoidCallback onImprimir;
   final VoidCallback onEditar;
   final Function(String novoStatus) onAlterarStatus;
@@ -27,24 +25,36 @@ class PedidoCardLocal extends StatefulWidget {
 }
 
 class _PedidoCardLocalState extends State<PedidoCardLocal> {
-  late Timer _timer;
+  Timer? _timer;
   late Duration _tempoAberto;
 
   @override
   void initState() {
     super.initState();
-    _tempoAberto = DateTime.now().difference(widget.pedido.data);
-
+    _calcularTempo();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _tempoAberto = DateTime.now().difference(widget.pedido.data);
-      });
+      if (!mounted) return;
+      _calcularTempo();
     });
   }
 
   @override
+  void didUpdateWidget(covariant PedidoCardLocal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.itens.length != widget.itens.length ||
+        oldWidget.pedido.data != widget.pedido.data) {
+      setState(() {});
+    }
+  }
+  void _calcularTempo() {
+    _tempoAberto = DateTime.now().difference(widget.pedido.data);
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -54,8 +64,8 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
     return h > 0 ? "$h h ${m.toString().padLeft(2, '0')} min" : "$m min";
   }
 
-  Color getStatusColor() {
-    switch (widget.pedido.status) {
+  Color getStatusColor(String status) {
+    switch (status) {
       case "pendente":
         return Colors.orange;
       case "em preparo":
@@ -71,8 +81,8 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
     }
   }
 
-  IconData getStatusIcon() {
-    switch (widget.pedido.status) {
+  IconData getStatusIcon(String status) {
+    switch (status) {
       case "pendente":
         return Icons.schedule;
       case "em preparo":
@@ -81,6 +91,8 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
         return Icons.check_circle;
       case "entregue":
         return Icons.delivery_dining;
+      case "fechado":
+        return Icons.lock;
       default:
         return Icons.receipt_long;
     }
@@ -90,36 +102,31 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 700;
-
-        return Card(
-          elevation: 3,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _cabecalho(theme),
-                const SizedBox(height: 12),
-                _infoTempo(),
-                const Divider(height: 32),
-                _listaItens(),
-                const Divider(height: 32),
-                _rodape(isWide),
-              ],
-            ),
-          ),
-        );
-      },
+    return Card(
+      key: ValueKey(widget.pedido.id), // 🔥 ESSENCIAL
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _cabecalho(theme),
+            const SizedBox(height: 12),
+            _infoTempo(),
+            const Divider(height: 32),
+            _listaItens(),
+            const Divider(height: 32),
+            _rodape(),
+          ],
+        ),
+      ),
     );
   }
 
-  // ================= CABEÇALHO =================
   Widget _cabecalho(ThemeData theme) {
     return Row(
       children: [
@@ -131,12 +138,16 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
           ),
         ),
         Chip(
-          avatar: Icon(getStatusIcon(), size: 18, color: Colors.white),
+          avatar: Icon(
+            getStatusIcon(widget.pedido.status),
+            size: 18,
+            color: Colors.white,
+          ),
           label: Text(
             widget.pedido.status.toUpperCase(),
             style: const TextStyle(color: Colors.white),
           ),
-          backgroundColor: getStatusColor(),
+          backgroundColor: getStatusColor(widget.pedido.status),
         ),
       ],
     );
@@ -147,132 +158,67 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
       children: [
         Icon(Icons.timer, size: 16, color: Colors.grey[600]),
         const SizedBox(width: 6),
-        Text(
-          "há ${getTempoFormatado()}",
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
+        Text("há ${getTempoFormatado()}",
+            style: const TextStyle(fontWeight: FontWeight.w600)),
         const Spacer(),
-        Text(
-          DateFormat('HH:mm').format(widget.pedido.data),
-          style: TextStyle(color: Colors.grey[600]),
-        ),
+        Text(DateFormat('HH:mm').format(widget.pedido.data),
+            style: TextStyle(color: Colors.grey[600])),
       ],
     );
   }
 
-  // ================= ITENS =================
   Widget _listaItens() {
     return Column(
-      children: widget.itens.map(_itemPedido).toList(),
+      children: widget.itens
+          .map(
+            (i) => KeyedSubtree(
+          key: ValueKey('${widget.pedido.id}_${i.produto.id}'),
+          child: _itemPedido(i),
+        ),
+      )
+          .toList(),
     );
   }
+
 
   Widget _itemPedido(ItemCarrinho i) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: Colors.brown.shade100,
-                child: Text(
-                  "${i.quantidade.toInt()}x",
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  i.produto.nome,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: Colors.brown.shade100,
+            child: Text("${i.quantidade.toInt()}x",
+                style: const TextStyle(fontSize: 12)),
           ),
-
-          if (i.acompanhamentos?.isNotEmpty ?? false)
-            Padding(
-              padding: const EdgeInsets.only(left: 38, top: 6),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: -8,
-                children: i.acompanhamentos!
-                    .map((a) => Chip(
-                  label: Text(a.nome),
-                  visualDensity: VisualDensity.compact,
-                ))
-                    .toList(),
-              ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              i.produto.nome, // ✅ agora sempre renderiza
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-
-          if (i.observacao?.isNotEmpty ?? false)
-            Padding(
-              padding: const EdgeInsets.only(left: 38, top: 6),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_note, size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        i.observacao!,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
   }
 
-  // ================= RODAPÉ =================
-  Widget _rodape(bool isWide) {
-    final actions = [
-      _acao(Icons.edit, "Editar", widget.onEditar),
-      _acao(Icons.print, "Imprimir", widget.onImprimir),
-      _acao(Icons.flag, "Status", () => _abrirSelecaoStatus(context)),
-    ];
-
+  Widget _rodape() {
     return Column(
       children: [
-        Row(
-          children: [
-            Text(
-              "Total: ${widget.pedido.totalFormatado}",
-              style:
-              const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
+        Text(
+          "Total: ${widget.pedido.totalFormatado}",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        isWide
-            ? Row(
-          children: actions
-              .map((a) => Expanded(child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: a,
-          )))
-              .toList(),
-        )
-            : Wrap(
+        Wrap(
           spacing: 8,
-          runSpacing: 8,
-          children: actions
-              .map((a) => SizedBox(width: 160, child: a))
-              .toList(),
+          children: [
+            _acao(Icons.edit, "Editar", widget.onEditar),
+            _acao(Icons.print, "Imprimir", widget.onImprimir),
+            _acao(Icons.flag, "Status", () => _abrirSelecaoStatus(context)),
+          ],
         ),
       ],
     );
@@ -283,44 +229,31 @@ class _PedidoCardLocalState extends State<PedidoCardLocal> {
       onPressed: onTap,
       icon: Icon(icon, size: 18),
       label: Text(label),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
     );
   }
 
   void _abrirSelecaoStatus(BuildContext context) {
-    final statusList = ['pendente', 'em preparo', 'pronto', 'entregue', 'fechado'];
+    const statusList = [
+      'pendente',
+      'em preparo',
+      'pronto',
+      'entregue',
+      'fechado'
+    ];
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => ListView(
         padding: const EdgeInsets.all(20),
-        shrinkWrap: true,
-        children: [
-          const Text(
-            "Alterar Status",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          ...statusList.map(
-                (s) => ListTile(
-              leading: Icon(getStatusIcon()),
-              title: Text(s.toUpperCase()),
-              trailing: widget.pedido.status == s
-                  ? const Icon(Icons.check, color: Colors.green)
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                widget.onAlterarStatus(s);
-              },
-            ),
-          ),
-        ],
+        children: statusList
+            .map((s) => ListTile(
+          title: Text(s.toUpperCase()),
+          onTap: () {
+            Navigator.pop(context);
+            widget.onAlterarStatus(s);
+          },
+        ))
+            .toList(),
       ),
     );
   }

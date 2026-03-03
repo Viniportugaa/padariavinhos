@@ -19,7 +19,7 @@ class _HistoricoPedidosPageState extends State<HistoricoPedidosPage> {
   @override
   void initState() {
     super.initState();
-    context.read<PedidosBalcaoProvider>().startListeningHistorico();
+    context.read<PedidosBalcaoProvider>().listenPedidosAtivos();
   }
 
   Color _statusColor(String status) {

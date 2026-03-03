@@ -14,6 +14,7 @@ class Produto {
   final List<String> acompanhamentosIds;
   final bool vendidoPorPeso;
   final bool disponivelLocal;
+  final List<String> diasDisponiveis;
 
   Produto({
     required this.id,
@@ -28,6 +29,8 @@ class Produto {
     this.acompanhamentosSelecionados = const [],
     this.acompanhamentosIds = const [],
     this.vendidoPorPeso = false,
+    this.diasDisponiveis = const ["all"],
+
   });
 
   Produto copyWith({
@@ -43,6 +46,8 @@ class Produto {
     List<Acompanhamento>? acompanhamentosSelecionados,
     List<String>? acompanhamentosIds,
     bool? vendidoPorPeso,
+    List<String>? diasDisponiveis,
+
   }) {
     return Produto(
       id: id ?? this.id,
@@ -59,6 +64,8 @@ class Produto {
       acompanhamentosSelecionados ?? List.from(this.acompanhamentosSelecionados),
       acompanhamentosIds: acompanhamentosIds ?? List.from(this.acompanhamentosIds),
       vendidoPorPeso: vendidoPorPeso ?? this.vendidoPorPeso,
+      diasDisponiveis: diasDisponiveis ?? List.from(this.diasDisponiveis),
+
     );
   }
 
@@ -84,6 +91,11 @@ class Produto {
       acompanhamentosSelecionados: acompanhamentosSelecionados ?? [],
       acompanhamentosIds: List<String>.from(map['acompanhamentosIds'] ?? []),
       vendidoPorPeso: map['vendidoPorPeso'] ?? false,
+      diasDisponiveis:
+      (map['diasDisponiveis'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          ["all"],
     );
   }
 
@@ -99,6 +111,7 @@ class Produto {
       'acompanhamentosDisponiveis': acompanhamentosDisponiveis.map((a) => a.toMap()).toList(),
       'acompanhamentosSelecionados': acompanhamentosSelecionados.map((a) => a.toMap()).toList(),
       'vendidoPorPeso': vendidoPorPeso,
+      'diasDisponiveis': diasDisponiveis,
     };
   }
 }

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padariavinhos/models/produto.dart';
-import 'package:padariavinhos/models/acompanhamento.dart';
-import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/helpers/dialog_helper.dart';
-
 
 class AdminProdutosPage extends StatefulWidget {
   @override
@@ -13,458 +10,598 @@ class AdminProdutosPage extends StatefulWidget {
 }
 
 class _AdminProdutosPageState extends State<AdminProdutosPage> {
+
   final List<String> categoriasFixas = [
     'Todas',
-    'Festividade', 'Pratos', 'Doce', 'Lanches',
-    'Bolos', 'Paes', 'Refrigerante', 'Salgados', 'Sucos', 'Combo',
+    'Festividade','Pratos','Doce','Lanches',
+    'Bolos','Paes','Refrigerante','Salgados','Sucos','Combo'
   ];
 
-  void _editarProduto(BuildContext context, Produto produto) {
-    final nomeController = TextEditingController(text: produto.nome);
-    final descricaoController = TextEditingController(text: produto.descricao);
-    final precoController = TextEditingController(text: produto.preco.toString());
-    String categoria = produto.category;
-    bool disponivel = produto.disponivel;
-    bool disponivelLocal = produto.disponivelLocal;
-    bool vendidoPorPeso = produto.vendidoPorPeso;
+  /// CALCULO AUTOMATICO
+  bool calcularDisponivelAutomatico(List<String> diasDisponiveis){
+
+    final hoje = DateTime.now().weekday;
+
+    const dias = {
+      1:"segunda",
+      2:"terca",
+      3:"quarta",
+      4:"quinta",
+      5:"sexta",
+      6:"sabado",
+      7:"domingo"
+    };
+
+    final diaHoje = dias[hoje]!;
+
+    if(diasDisponiveis.contains("all")) return true;
+
+    return diasDisponiveis.contains(diaHoje);
+  }
+
+
+  /// EDITAR PRODUTO
+  void _editarProduto(BuildContext context, Produto produto){
+
+    final nomeController=TextEditingController(text:produto.nome);
+    final descricaoController=TextEditingController(text:produto.descricao);
+    final precoController=TextEditingController(text:produto.preco.toString());
+
+    String categoria=produto.category;
+    bool disponivelLocal=produto.disponivelLocal;
+    bool vendidoPorPeso=produto.vendidoPorPeso;
+
+    List<String> diasSelecionados=List.from(produto.diasDisponiveis);
+
+    const diasSemana=[
+      'segunda','terca','quarta',
+      'quinta','sexta','sabado','domingo'
+    ];
 
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 16,
-            left: 16,
-            right: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Editar Produto',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
 
-                // Nome
-                TextField(
-                  controller: nomeController,
-                  decoration: const InputDecoration(
-                    labelText: "Nome",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
+        context:context,
+        isScrollControlled:true,
 
-                // Descrição
-                TextField(
-                  controller: descricaoController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: "Descrição",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
+        builder:(context){
 
-                // Preço
-                TextField(
-                  controller: precoController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Preço",
-                    prefixText: "R\$ ",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
+          return StatefulBuilder(
 
-                // Categoria
-                DropdownButtonFormField<String>(
-                  value: categoria,
-                  items: categoriasFixas
-                      .where((c) => c != "Todas")
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) categoria = val;
-                  },
-                  decoration: const InputDecoration(
-                    labelText: "Categoria",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
+              builder:(context,setModalState){
 
-                // Disponível toggle
-                SwitchListTile(
-                  value: disponivel,
-                  title: const Text("Disponível"),
-                  activeColor: Colors.deepOrange,
-                  onChanged: (val) {
-                    disponivel = val;
-                  },
-                ),
-                // Disponível toggle
-                SwitchListTile(
-                  value: disponivelLocal,
-                  title: const Text("Disponível Local"),
-                  activeColor: Colors.deepOrange,
-                  onChanged: (val) {
-                    disponivelLocal = val;
-                  },
-                ),
-                // Vendido por peso toggle
-                SwitchListTile(
-                  value: vendidoPorPeso,
-                  title: const Text("Vendido por peso"),
-                  activeColor: Colors.deepOrange,
-                  onChanged: (val) {
-                    vendidoPorPeso = val;
-                  },
-                ),
+                return Padding(
 
-                const SizedBox(height: 20),
+                    padding:EdgeInsets.only(
+                        bottom:MediaQuery.of(context).viewInsets.bottom+16,
+                        top:16,left:16,right:16
+                    ),
 
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.save, size: 18),
-                  label: const Text('Salvar', style: TextStyle(fontSize: 14)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () async {
-                    await FirebaseFirestore.instance.collection('produtos').doc(produto.id).update({
-                      'nome': nomeController.text.trim(),
-                      'descricao': descricaoController.text.trim(),
-                      'preco': double.tryParse(precoController.text.replaceAll(',', '.')) ?? produto.preco,
-                      'category': categoria,
-                      'disponivel': disponivel,
-                      'disponivelLocal':disponivelLocal,
-                      'vendidoPorPeso': vendidoPorPeso,
-                      'imageUrl': produto.imageUrl,
-                    });
+                    child:SingleChildScrollView(
 
-                    Navigator.of(context).pop();
-                    DialogHelper.showTemporaryToast(context, "Produto '${produto.nome}' atualizado!");
-                    setState(() {});
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+                        child:Column(
+
+                            children:[
+
+                              const Text(
+                                'Editar Produto',
+                                style:TextStyle(
+                                    fontSize:20,
+                                    fontWeight:FontWeight.bold),
+                              ),
+
+                              const SizedBox(height:16),
+
+                              TextField(
+                                controller:nomeController,
+                                decoration:const InputDecoration(
+                                  labelText:"Nome",
+                                  border:OutlineInputBorder(),
+                                ),
+                              ),
+
+                              const SizedBox(height:12),
+
+                              TextField(
+                                controller:descricaoController,
+                                maxLines:2,
+                                decoration:const InputDecoration(
+                                  labelText:"Descrição",
+                                  border:OutlineInputBorder(),
+                                ),
+                              ),
+
+                              const SizedBox(height:12),
+
+                              TextField(
+                                controller:precoController,
+                                keyboardType:TextInputType.number,
+                                decoration:const InputDecoration(
+                                  labelText:"Preço",
+                                  prefixText:"R\$ ",
+                                  border:OutlineInputBorder(),
+                                ),
+                              ),
+
+                              const SizedBox(height:12),
+
+                              DropdownButtonFormField<String>(
+
+                                value:categoria,
+
+                                items:categoriasFixas
+                                    .where((c)=>c!="Todas")
+                                    .map((c)=>DropdownMenuItem(
+                                    value:c,
+                                    child:Text(c)
+                                )).toList(),
+
+                                onChanged:(v){
+                                  if(v!=null){
+                                    setModalState(()=>categoria=v);
+                                  }
+                                },
+
+                                decoration:const InputDecoration(
+                                  labelText:"Categoria",
+                                  border:OutlineInputBorder(),
+                                ),
+
+                              ),
+
+                              const SizedBox(height:12),
+
+                              SwitchListTile(
+                                value:disponivelLocal,
+                                title:const Text("Disponível Local"),
+                                onChanged:(v){
+                                  setModalState(()=>disponivelLocal=v);
+                                },
+                              ),
+
+                              SwitchListTile(
+                                value:vendidoPorPeso,
+                                title:const Text("Vendido por peso"),
+                                onChanged:(v){
+                                  setModalState(()=>vendidoPorPeso=v);
+                                },
+                              ),
+
+                              const SizedBox(height:10),
+
+                              const Text(
+                                "Disponibilidade por dia",
+                                style:TextStyle(
+                                    fontWeight:FontWeight.bold),
+                              ),
+
+                              CheckboxListTile(
+                                title:const Text("Todos os dias"),
+                                value:diasSelecionados.contains("all"),
+                                onChanged:(v){
+
+                                  setModalState((){
+
+                                    diasSelecionados.clear();
+
+                                    if(v==true){
+                                      diasSelecionados.add("all");
+                                    }
+
+                                  });
+
+                                },
+
+                              ),
+
+                              ...diasSemana.map((dia){
+
+                                return CheckboxListTile(
+
+                                  title:Text(dia),
+
+                                  value:diasSelecionados.contains(dia),
+
+                                  onChanged:(v){
+
+                                    setModalState((){
+
+                                      diasSelecionados.remove("all");
+
+                                      if(v==true){
+                                        diasSelecionados.add(dia);
+                                      }else{
+                                        diasSelecionados.remove(dia);
+                                      }
+
+                                    });
+
+                                  },
+
+                                );
+
+                              }),
+
+                              const SizedBox(height:20),
+
+                              ElevatedButton.icon(
+
+                                icon:const Icon(Icons.save),
+
+                                label:const Text("Salvar"),
+
+                                style:ElevatedButton.styleFrom(
+                                    backgroundColor:Colors.deepOrange
+                                ),
+
+                                onPressed:() async{
+
+                                  final disponivelAutomatico=
+                                  calcularDisponivelAutomatico(
+                                      diasSelecionados);
+
+                                  await FirebaseFirestore.instance
+                                      .collection('produtos')
+                                      .doc(produto.id)
+                                      .update({
+
+                                    'nome':nomeController.text.trim(),
+
+                                    'descricao':
+                                    descricaoController.text.trim(),
+
+                                    'preco':double.tryParse(
+                                        precoController.text
+                                            .replaceAll(',', '.'))
+                                        ??produto.preco,
+
+                                    'category':categoria,
+
+                                    'diasDisponiveis':diasSelecionados,
+
+                                    'disponivel':disponivelAutomatico,
+
+                                    'disponivelLocal':disponivelLocal,
+
+                                    'vendidoPorPeso':vendidoPorPeso,
+
+                                    'imageUrl':produto.imageUrl
+
+                                  });
+
+                                  Navigator.pop(context);
+
+                                  DialogHelper.showTemporaryToast(
+                                      context,
+                                      "Produto atualizado");
+
+                                  setState((){});
+
+                                },
+
+                              ),
+
+                              const SizedBox(height:20)
+
+                            ]
+
+                        )
+
+                    )
+
+                );
+
+              }
+
+          );
+
+        }
+
     );
+
   }
 
-  String categoriaSelecionada = 'Todas';
-  String filtroNome = '';
 
-  Future<List<Acompanhamento>> carregarTodosAcompanhamentos() async {
-    final snapshot = await FirebaseFirestore.instance.collection('acompanhamentos').get();
-    return snapshot.docs.map((doc) => Acompanhamento.fromMap(doc.data(), doc.id)).toList();
+  /// TOGGLE DISPONIVEL
+  void toggleDisponivel(String id,bool atual) async{
+
+    await FirebaseFirestore.instance
+        .collection('produtos')
+        .doc(id)
+        .update({'disponivel':!atual});
+
   }
 
-  void toggleDisponivel(String docId, bool atual) async {
-    await FirebaseFirestore.instance.collection('produtos').doc(docId).update({'disponivel': !atual});
-    setState(() {});
-  }
 
-  void _confirmarExclusaoProduto(String produtoId, String nomeProduto) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Excluir produto"),
-        content: Text("Deseja realmente excluir o produto '$nomeProduto'?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancelar")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Excluir"),
-          ),
-        ],
-      ),
+  /// DELETE
+  void _confirmarExclusaoProduto(
+      String id,String nome) async{
+
+    final confirm=await showDialog<bool>(
+
+        context:context,
+
+        builder:(context)=>AlertDialog(
+
+            title:const Text("Excluir produto"),
+
+            content:Text("Excluir '$nome'?"),
+
+            actions:[
+
+              TextButton(
+                  onPressed:()=>Navigator.pop(context,false),
+                  child:const Text("Cancelar")
+              ),
+
+              ElevatedButton(
+
+                  style:ElevatedButton.styleFrom(
+                      backgroundColor:Colors.red),
+
+                  onPressed:()=>Navigator.pop(context,true),
+
+                  child:const Text("Excluir")
+
+              )
+
+            ]
+
+        )
+
     );
 
-    if (confirm == true) {
-      await FirebaseFirestore.instance.collection('produtos').doc(produtoId).delete();
-      DialogHelper.showTemporaryToast(context, "Produto '$nomeProduto' excluído!");
+    if(confirm==true){
+
+      await FirebaseFirestore.instance
+          .collection('produtos')
+          .doc(id)
+          .delete();
+
+      DialogHelper.showTemporaryToast(
+          context,
+          "Produto excluído");
+
     }
+
   }
 
-  void _editarAcompanhamentos(BuildContext context, String produtoId, List<String> acompanhamentosIdsAtuais) async {
-    final todosAcompanhs = await carregarTodosAcompanhamentos();
-    if (!context.mounted) return;
-    final selecionados = List<String>.from(acompanhamentosIdsAtuais);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                top: 16,
-                left: 16,
-                right: 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Acompanhamentos do Produto', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 300,
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: todosAcompanhs.map((ac) {
-                        final isChecked = selecionados.contains(ac.id);
-                        return CheckboxListTile(
-                          title: Text('${ac.nome} (+R\$${ac.preco.toStringAsFixed(2)})'),
-                          value: isChecked,
-                          onChanged: (val) {
-                            setModalState(() {
-                              if (val == true) selecionados.add(ac.id!);
-                              else selecionados.remove(ac.id);
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.save),
-                    label: const Text('Salvar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () async {
-                      await FirebaseFirestore.instance.collection('produtos').doc(produtoId).update({
-                        'acompanhamentosIds': selecionados,
-                      });
-                      Navigator.of(context).pop();
-                       DialogHelper.showTemporaryToast(context, 'Acompanhamentos atualizados!');
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const Text('Painel Admin - Produtos'),
-        backgroundColor: Colors.deepOrange,
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add),
-        tooltip: "Cadastrar novo produto",
-        onPressed: () => context.go('/cadastro-produto'),
-      ),
-      body: Column(
-        children: [
-          // FILTRO POR NOME
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Buscar produto',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (valor) {
-                setState(() => filtroNome = valor.toLowerCase());
-              },
-            ),
-          ),
-          SizedBox(
-            height: 50,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              itemCount: categoriasFixas.length,
-              itemBuilder: (context, index) {
-                final cat = categoriasFixas[index];
-                final isSelected = categoriaSelecionada == cat;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (_) {
-                      setState(() {
-                        categoriaSelecionada = cat;
-                      });
-                    },
-                    selectedColor: Colors.deepOrange,
-                    backgroundColor: Colors.grey.shade200,
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+
+        appBar:AppBar(
+            title:const Text('Painel Admin - Produtos'),
+            backgroundColor:Colors.deepOrange
+        ),
+
+        floatingActionButton:FloatingActionButton(
+          backgroundColor:Colors.deepOrange,
+          onPressed:()=>context.go('/cadastro-produto'),
+          child:const Icon(Icons.add),
+        ),
+
+        body:StreamBuilder<QuerySnapshot>(
+
+            stream:FirebaseFirestore.instance
+                .collection('produtos')
+                .snapshots(),
+
+            builder:(context,snapshot){
+
+              if(!snapshot.hasData){
+                return const Center(
+                    child:CircularProgressIndicator());
+              }
+
+              final docs=snapshot.data!.docs;
+
+              return GridView.builder(
+
+                  padding:const EdgeInsets.all(12),
+
+                  gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount:2,
+                      crossAxisSpacing:12,
+                      mainAxisSpacing:12,
+                      childAspectRatio:0.75
                   ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('produtos').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return Center(child: Text('Erro: ${snapshot.error}'));
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-                var produtosDocs = snapshot.data!.docs;
+                  itemCount:docs.length,
 
-                // FILTRO POR CATEGORIA
-                produtosDocs = produtosDocs.where((doc) {
-                  final data = doc.data()! as Map<String, dynamic>;
-                  final matchesCategory = categoriaSelecionada == 'Todas' || (data['category'] ?? '') == categoriaSelecionada;
-                  final matchesName = filtroNome.isEmpty || (data['nome'] ?? '').toString().toLowerCase().contains(filtroNome);
-                  return matchesCategory && matchesName;
-                }).toList();
+                  itemBuilder:(context,i){
 
-                if (produtosDocs.isEmpty) return const Center(child: Text('Nenhum produto encontrado.'));
-
-                return GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.75,
-                  ),
-                  itemCount: produtosDocs.length,
-                  itemBuilder: (context, index) {
-                    final doc = produtosDocs[index];
-                    final data = doc.data()! as Map<String, dynamic>;
-                    final produto = Produto.fromMap(data, doc.id);
-                    final List<String> acompanhsIds = (data['acompanhamentosIds'] ?? []).map<String>((e) => e.toString()).toList();
-
-                    return Stack(
-                      children: [
-                        Card(
-                          elevation: 6,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              image: produto.imageUrl != null && produto.imageUrl!.isNotEmpty
-                                  ? DecorationImage(
-                                image: NetworkImage(produto.imageUrl!.first),
-                                fit: BoxFit.cover,
-                              )
-                                  : null,
-                            ),
-                            child: produto.imageUrl == null || produto.imageUrl!.isEmpty
-                                ? const Icon(Icons.fastfood, size: 60, color: Colors.deepOrange)
-                                : null,
-                          ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(produto.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 4),
-                                Text(produto.descricao, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                                const SizedBox(height: 4),
-                                Text('Acomp.: ${acompanhsIds.join(", ")}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10)),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => toggleDisponivel(doc.id, produto.disponivel),
-                                      child: Container(
-                                        width: 28,
-                                        height: 28,
-                                        decoration: BoxDecoration(
-                                          color: produto.disponivel ? Colors.green : Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.fastfood, color: Colors.deepOrange, size: 20),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          tooltip: "Editar produto",
-                                          onPressed: () => _editarProduto(context, produto),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.playlist_add, color: Colors.blue, size: 20),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          tooltip: "Editar acompanhamentos",
-                                          onPressed: () => _editarAcompanhamentos(context, doc.id, acompanhsIds),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: InkWell(
-                            onTap: () => _confirmarExclusaoProduto(doc.id, produto.nome),
-                            child: const CircleAvatar(
-                              backgroundColor: Colors.red,
-                              radius: 14,
-                              child: Icon(Icons.close, size: 16, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
+                    final produto=Produto.fromMap(
+                        docs[i].data()
+                        as Map<String,dynamic>,
+                        docs[i].id
                     );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+
+                    return Container(
+
+                        decoration:BoxDecoration(
+
+                            color:Colors.white,
+
+                            borderRadius:
+                            BorderRadius.circular(16),
+
+                            boxShadow:[
+
+                              BoxShadow(
+                                  color:Colors.black12,
+                                  blurRadius:6)
+
+                            ]
+
+                        ),
+
+                        child:Column(
+
+                            children:[
+
+                              Expanded(
+
+                                  child:ClipRRect(
+
+                                      borderRadius:
+                                      const BorderRadius.vertical(
+                                          top:Radius.circular(16)),
+
+                                      child:
+                                      produto.imageUrl.isNotEmpty
+
+                                          ?Image.network(
+                                          produto.imageUrl.first,
+                                          fit:BoxFit.cover)
+
+                                          :const Icon(
+                                          Icons.fastfood,
+                                          size:50)
+
+                                  )
+
+                              ),
+
+                              Padding(
+
+                                  padding:
+                                  const EdgeInsets.all(8),
+
+                                  child:Column(
+
+                                      children:[
+
+                                        Text(
+                                          produto.nome,
+                                          maxLines:1,
+                                          overflow:
+                                          TextOverflow.ellipsis,
+                                          style:
+                                          const TextStyle(
+                                              fontWeight:
+                                              FontWeight.bold),
+                                        ),
+
+                                        Text(
+                                            "R\$ ${produto.preco.toStringAsFixed(2)}"
+                                        ),
+
+                                        const SizedBox(height:6),
+
+                                        Row(
+
+                                            children:[
+
+                                              Expanded(
+
+                                                  child:
+                                                  ElevatedButton(
+
+                                                      style:
+                                                      ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                          produto.disponivel
+                                                              ?Colors.green
+                                                              :Colors.red),
+
+                                                      onPressed:(){
+
+                                                        toggleDisponivel(
+                                                            produto.id,
+                                                            produto.disponivel);
+
+                                                      },
+
+                                                      child:
+                                                      const Icon(Icons.store)
+
+                                                  )
+
+                                              ),
+
+                                              const SizedBox(width:5),
+
+                                              Expanded(
+
+                                                  child:
+                                                  ElevatedButton(
+
+                                                      style:
+                                                      ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                          Colors.orange),
+
+                                                      onPressed:(){
+
+                                                        _editarProduto(
+                                                            context,
+                                                            produto);
+
+                                                      },
+
+                                                      child:
+                                                      const Icon(Icons.edit)
+
+                                                  )
+
+                                              ),
+
+                                              const SizedBox(width:5),
+
+                                              Expanded(
+
+                                                  child:
+                                                  ElevatedButton(
+
+                                                      style:
+                                                      ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                          Colors.black),
+
+                                                      onPressed:(){
+
+                                                        _confirmarExclusaoProduto(
+                                                            produto.id,
+                                                            produto.nome);
+
+                                                      },
+
+                                                      child:
+                                                      const Icon(Icons.delete)
+
+                                                  )
+
+                                              )
+
+                                            ]
+
+                                        )
+
+                                      ]
+
+                                  )
+
+                              )
+
+                            ]
+
+                        )
+
+                    );
+
+                  }
+
+              );
+
+            }
+
+        )
+
     );
+
   }
+
 }

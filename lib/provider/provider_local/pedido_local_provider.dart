@@ -272,10 +272,25 @@ class PedidoLocalProvider extends ChangeNotifier {
     _pedidoEditandoId = pedidoId;
 
     _itens.clear();
-    _mesaAtual = null;
     _carregado = false;
     notifyListeners();
 
+    // 🔥 1. Busca dados do pedido (mesa)
+    final pedidoDoc = await firestore
+        .collection('pedidos_local')
+        .doc(pedidoId)
+        .get();
+
+    if (!pedidoDoc.exists) {
+      _carregado = true;
+      notifyListeners();
+      return;
+    }
+
+    final dataPedido = pedidoDoc.data()!;
+    _mesaAtual = dataPedido['mesa']?.toString(); // 🔥 RESTAURA MESA
+
+    // 🔥 2. Busca itens do pedido
     final itensSnap = await firestore
         .collection('pedidos_local')
         .doc(pedidoId)
@@ -289,7 +304,6 @@ class PedidoLocalProvider extends ChangeNotifier {
     _carregado = true;
     notifyListeners();
   }
-
   // ===========================================================================
   // 🔥 CATÁLOGO
   // ===========================================================================

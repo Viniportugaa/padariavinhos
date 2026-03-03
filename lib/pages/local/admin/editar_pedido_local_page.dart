@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:go_router/go_router.dart';
 import 'package:padariavinhos/models/item_carrinho.dart';
 import 'package:padariavinhos/models/produto.dart';
 import 'package:padariavinhos/models/acompanhamento.dart';
@@ -116,7 +116,7 @@ class _EditarPedidoLocalPageState extends State<EditarPedidoLocalPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context);
+            context.go('/local');
           },
         ),
         title: const Text("Editar Pedido"),

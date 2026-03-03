@@ -7,47 +7,45 @@ import 'package:padariavinhos/models/item_carrinho.dart';
 class PedidosBalcaoProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  StreamSubscription? _subAtivos;
-  StreamSubscription? _subHistorico;
+  StreamSubscription<QuerySnapshot>? _subAtivos;
+  StreamSubscription<QuerySnapshot>? _subHistorico;
 
-  bool _loading = true;
+  bool _loading = false;
+  bool get loading => _loading;
 
-  final Map<String, PedidoLocal> _ultimoPedidoPorMesa = {};
+  final Map<String, PedidoLocal> _pedidosPorMesa = {};
   final List<PedidoLocal> _historico = [];
   final Map<String, List<ItemCarrinho>> _itensCache = {};
 
-  bool get loading => _loading;
-
-  /// Pedidos ativos (1 por mesa)
-  List<PedidoLocal> get pedidos =>
-      _ultimoPedidoPorMesa.values.toList()
+  List<PedidoLocal> get pedidosAtivos =>
+      _pedidosPorMesa.values.toList()
         ..sort((a, b) => b.data.compareTo(a.data));
 
-  /// Histórico completo
   List<PedidoLocal> get pedidosHistorico =>
       List.unmodifiable(_historico);
 
   // ======================================================
-  // 🔥 ESCUTA PEDIDOS ATIVOS (Painel do balcão)
+  // 🔥 ATIVOS (real-time, 1 por mesa)
   // ======================================================
-  void startListening() {
+  void listenPedidosAtivos() {
     _subAtivos?.cancel();
     _loading = true;
+    notifyListeners();
 
     _subAtivos = _firestore
         .collection('pedidos_local')
         .where('status', isNotEqualTo: 'fechado')
-        .orderBy('status')
-        .orderBy('data', descending: true)
         .snapshots()
         .listen((snapshot) {
-      _ultimoPedidoPorMesa.clear();
+      _pedidosPorMesa.clear();
 
       for (final doc in snapshot.docs) {
         final pedido = PedidoLocal.fromFirestore(doc);
 
-        // mantém apenas o último pedido por mesa
-        _ultimoPedidoPorMesa.putIfAbsent(pedido.mesa, () => pedido);
+        final atual = _pedidosPorMesa[pedido.mesa];
+        if (atual == null || pedido.data.isAfter(atual.data)) {
+          _pedidosPorMesa[pedido.mesa] = pedido;
+        }
       }
 
       _loading = false;
@@ -55,9 +53,13 @@ class PedidosBalcaoProvider extends ChangeNotifier {
     });
   }
 
-  void startListeningPedidosHoje() {
+  // ======================================================
+  // 🔥 PEDIDOS DE HOJE (sem agrupar)
+  // ======================================================
+  void listenPedidosHoje() {
     _subAtivos?.cancel();
     _loading = true;
+    notifyListeners();
 
     final agora = DateTime.now();
     final inicioDia = DateTime(agora.year, agora.month, agora.day);
@@ -73,16 +75,13 @@ class PedidosBalcaoProvider extends ChangeNotifier {
       'data',
       isLessThan: Timestamp.fromDate(fimDia),
     )
-        .orderBy('data', descending: true)
         .snapshots()
         .listen((snapshot) {
-      _ultimoPedidoPorMesa.clear();
+      _pedidosPorMesa.clear();
 
       for (final doc in snapshot.docs) {
         final pedido = PedidoLocal.fromFirestore(doc);
-
-        // 🔹 mostra TODOS (não agrupa mais por mesa)
-        _ultimoPedidoPorMesa[pedido.id] = pedido;
+        _pedidosPorMesa[pedido.id] = pedido;
       }
 
       _loading = false;
@@ -91,33 +90,41 @@ class PedidosBalcaoProvider extends ChangeNotifier {
   }
 
   // ======================================================
-  // 🔥 ESCUTA HISTÓRICO
+  // 🔥 HISTÓRICO (fechados)
   // ======================================================
-  void startListeningHistorico() {
+  void listenHistorico() {
     _subHistorico?.cancel();
     _loading = true;
+    notifyListeners();
 
     _subHistorico = _firestore
         .collection('pedidos_local')
         .where('status', isEqualTo: 'fechado')
-        .orderBy('data', descending: true)
         .snapshots()
         .listen((snapshot) {
       _historico
         ..clear()
-        ..addAll(
-          snapshot.docs.map(
-                (d) => PedidoLocal.fromFirestore(d),
-          ),
-        );
+        ..addAll(snapshot.docs.map(PedidoLocal.fromFirestore));
+
+      _historico.sort((a, b) => b.data.compareTo(a.data));
 
       _loading = false;
       notifyListeners();
     });
   }
 
+  Stream<List<ItemCarrinho>> streamItensPedido(String pedidoId) {
+    return _firestore
+        .collection('pedidos_local')
+        .doc(pedidoId)
+        .collection('itens')
+        .snapshots()
+        .map((snap) =>
+        snap.docs.map((d) => ItemCarrinho.fromMap(d.data())).toList());
+  }
+
   // ======================================================
-  // 🔥 ITENS (lazy + cache)
+  // 🔥 ITENS (cache lazy)
   // ======================================================
   Future<List<ItemCarrinho>> carregarItens(String pedidoId) async {
     if (_itensCache.containsKey(pedidoId)) {
@@ -130,17 +137,17 @@ class PedidosBalcaoProvider extends ChangeNotifier {
   }
 
   // ======================================================
-  // 🔥 ALTERAR STATUS
+  // 🔥 STATUS
   // ======================================================
-  Future<void> alterarStatus(String pedidoId, String status) async {
-    await _firestore
+  Future<void> alterarStatus(String pedidoId, String status) {
+    return _firestore
         .collection('pedidos_local')
         .doc(pedidoId)
         .update({'status': status});
   }
 
   // ======================================================
-  // 🔥 LIMPAR
+  // 🔥 CLEANUP
   // ======================================================
   @override
   void dispose() {

@@ -18,6 +18,7 @@ import 'package:padariavinhos/pages/signup/signup_page.dart';
 import 'package:padariavinhos/pages/splash_screen.dart';
 import 'package:padariavinhos/pages/admin/cadastro_produto_page.dart';
 import 'package:padariavinhos/pages/admin/menu_admin.dart';
+import 'package:padariavinhos/pages/admin/admin_estoque_page.dart';
 import 'package:padariavinhos/notifiers/auth_notifier.dart';
 import 'package:padariavinhos/provider/carrinhos_provider.dart';
 import 'package:padariavinhos/helpers/transitions.dart';
@@ -142,6 +143,15 @@ GoRouter createRouter(AuthNotifier authNotifier) {
             scaleTransitionPage(child: AdminProdutosPage(), state: state),
       ),
 
+
+      GoRoute(
+        path: '/admin-estoque',
+        pageBuilder: (context, state) =>
+            scaleTransitionPage(
+              child: AdminEstoquePedidoPage(),
+              state: state,
+            ),
+      ),
 
       GoRoute(
         path: '/cupomadmin',

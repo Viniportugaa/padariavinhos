@@ -40,6 +40,10 @@ class ProdutosSection extends StatelessWidget {
         // Filtra produtos considerando favoritos
         List<Produto> produtosFiltrados =
         productsNotifier.produtosFiltrados(favoritosProvider);
+        // NOVO FILTRO POR DIA
+        produtosFiltrados = produtosFiltrados.where((produto) {
+          return productsNotifier.produtoDisponivelHoje(produto);
+        }).toList();
 
         // Filtro por nome
         if (filtroNome.isNotEmpty) {

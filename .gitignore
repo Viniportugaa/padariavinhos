@@ -78,3 +78,44 @@ temp/
 *.tmp
 *.bak
 *.old
+
+# ======================
+# FIREBASE (CRÍTICO)
+# ======================
+
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Firebase Flutter config
+lib/firebase_options.dart
+
+# Service accounts (NUNCA subir)
+serviceAccountKey.json
+service-account.json
+firebase-service-account.json
+
+# ======================
+# SEGURANÇA EXTRA
+# ======================
+
+secrets.json
+config.json
+keys.json
+
+# Logs extras
+firebase-debug.log
+
+# ======================
+# SISTEMA OPERACIONAL
+# ======================
+
+.DS_Store
+Thumbs.db
+
+# ======================
+# FLUTTER EXTRA
+# ======================
+
+.flutter/
+.metadata
+

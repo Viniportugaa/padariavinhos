@@ -82,6 +82,38 @@ class ProductsNotifier extends ChangeNotifier {
     categoriaSelecionada = null;
     notifyListeners();
   }
+// NOVO
+  bool produtoDisponivelHoje(Produto produto) {
+
+    final hoje = DateTime.now().weekday;
+
+    const dias = {
+      1: "segunda",
+      2: "terca",
+      3: "quarta",
+      4: "quinta",
+      5: "sexta",
+      6: "sabado",
+      7: "domingo",
+    };
+
+    final diaHoje = dias[hoje]!;
+
+    final diasDisponiveis = produto.diasDisponiveis;
+
+    /// Se ALL -> sempre disponível
+    if (diasDisponiveis.contains("all")) {
+      return true;
+    }
+
+    /// Se hoje não está marcado
+    if (!diasDisponiveis.contains(diaHoje)) {
+      return false;
+    }
+
+    /// Hoje está marcado
+    return true;
+  }
 
   @override
   void dispose() {

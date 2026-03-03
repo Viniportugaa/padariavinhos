@@ -138,6 +138,10 @@ class MenuAdmin extends StatelessWidget {
                               Colors.yellow, '/avaliacoesadmin',
                               largura: largura),
 
+                          buildMenuBotao(context, 'Contagem Pedido', Icons.content_paste_outlined,
+                              Colors.redAccent, '/admin-estoque',
+                              largura: largura),
+
                           buildMenuBotao(context, 'Local ADM', Icons.store,
                               Colors.indigo, '/local',
                               largura: largura),
